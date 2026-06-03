@@ -392,42 +392,7 @@ async def interactive_mode(message_renderer, initial_command: str = None) -> Non
 
     # Autosave loading is now manual - use /autosave_load command
 
-    # Auto-run tutorial on first startup
-    try:
-        from code_puppy.command_line.onboarding_wizard import should_show_onboarding
-
-        if should_show_onboarding():
-            import concurrent.futures
-
-            from code_puppy.command_line.onboarding_wizard import run_onboarding_wizard
-            from code_puppy.config import set_model_name
-
-            with concurrent.futures.ThreadPoolExecutor() as executor:
-                future = executor.submit(lambda: asyncio.run(run_onboarding_wizard()))
-                result = future.result(timeout=300)
-
-            if result == "chatgpt":
-                emit_info("🔐 Starting ChatGPT OAuth flow...")
-                from code_puppy.plugins.chatgpt_oauth.oauth_flow import run_oauth_flow
-
-                run_oauth_flow()
-                set_model_name("chatgpt-gpt-5.4")
-            elif result == "claude":
-                emit_info("🔐 Starting Claude Code OAuth flow...")
-                from code_puppy.plugins.claude_code_oauth.register_callbacks import (
-                    _perform_authentication,
-                )
-
-                _perform_authentication()
-                set_model_name("claude-code-claude-opus-4-7")
-            elif result == "completed":
-                emit_info("🎉 Tutorial complete! Happy coding!")
-            elif result == "skipped":
-                emit_info("⏭️ Tutorial skipped. Run /tutorial anytime!")
-    except Exception as e:
-        from code_puppy.messaging import emit_warning
-
-        emit_warning(f"Tutorial auto-start failed: {e}")
+    # Onboarding/tutorial removed in strip-to-spine
 
     # Track the current agent task for cancellation on quit
     current_agent_task = None

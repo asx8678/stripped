@@ -81,10 +81,6 @@ def _load_plugin_tools() -> None:
                     tool_name = tool_def["name"]
                     register_func = tool_def["register_func"]
                     if callable(register_func):
-                        try:
-                            register_func.register_func = register_func
-                        except AttributeError:
-                            pass
                         TOOL_REGISTRY[tool_name] = register_func
     except Exception:
         # Don't let plugin failures break core functionality

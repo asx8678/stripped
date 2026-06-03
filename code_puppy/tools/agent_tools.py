@@ -424,21 +424,6 @@ def register_invoke_agent(agent):
 
             model_settings = make_model_settings(model_name)
 
-            # Get MCP servers bound to this sub-agent and warm up any with
-            # ``auto_start=True``. We MUST use the async autostart variant
-            # here (NOT ``start_server_sync``/``load_mcp_servers``) because
-            # ``temp_agent.run(...)`` below is wrapped in
-            # ``asyncio.create_task``, so pydantic-ai opens the MCP toolset's
-            # anyio cancel scopes inside *that* task. The fire-and-forget
-            # sync variant returns before the lifecycle task has entered
-            # the MCP singleton's context, which races pydantic-ai's entry
-            # and produces ``Attempted to exit a cancel scope that isn't
-            # the current task's current cancel scope`` on unwind.
-            # ``autostart_bound_servers_async`` awaits readiness, so by the
-            # time we hand the toolsets to pydantic-ai the lifecycle task
-            # already owns each cancel scope and pydantic-ai's re-entry
-            # hits the ``_running_count > 0`` no-op fast-path.
-
             mcp_servers = []
 
             from code_puppy.agents._compaction import make_history_processor

@@ -149,4 +149,17 @@ no changes added to commit (use "git add" and/or "git commit -a")
 
 - Phase 7: ruff F-sweep + prune pyproject deps — b567ce301518d9367413691ca503008c34493648
 
-- Phase 8: fix critical runtime breaks (C1-C4) + cleanups (H2,M1) — 0bbfa366ca499faaad9f0d18a55375354277f17c
+- Phase 8: fix critical runtime breaks (C1-C4) + cleanups (H2,M1) — 51d4ad5f0d82366da23fe9c92f8ccc0a961c8b75
+
+
+## Final summary
+- Baseline `.py` count: 333
+- Final `.py` count: 111
+- Subsystems removed: plugins ecosystem, MCP (19 files), browser (9 files), extra providers, menus/support (autosave, version_checker, keymap residuals, onboarding/tutorial, wiggum/judges)
+- Dependencies dropped: `mcp`, `playwright`, `Pillow`, `azure-identity`, `boto3`, `bedrock` extra, `durable`/dbos extra
+- Kept spine: interactive loop (`cli_runner.py`), model factory, file/shell tools, messaging, agent skills plugin (signature feature)
+- Independent review: GO — all 4 critical runtime breaks fixed and verified
+- Non-blocking follow-ups (optional):
+  - Remove dead messaging types `UniversalConstructorMessage` / `VersionCheckMessage` and their renderers
+  - Clean agent_creator stale UC system-prompt text
+  - `model_factory.py:660` `claude_code` model type has no handler and falls through to `ValueError`
