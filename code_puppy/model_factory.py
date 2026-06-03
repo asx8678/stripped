@@ -19,7 +19,6 @@ from pydantic_ai.providers.cerebras import CerebrasProvider
 from pydantic_ai.providers.openrouter import OpenRouterProvider
 from pydantic_ai.settings import ModelSettings
 
-from code_puppy.gemini_model import GeminiModel
 from code_puppy.messaging import emit_warning
 
 from . import callbacks
@@ -31,7 +30,6 @@ from .provider_identity import (
     make_openai_provider,
     resolve_provider_identity,
 )
-from .round_robin_model import RoundRobinModel
 
 logger = logging.getLogger(__name__)
 
@@ -549,17 +547,6 @@ class ModelFactory:
                 logger.error(f"Custom model provider '{model_type}' failed: {e}")
                 return None
 
-        if model_type == "gemini":
-            api_key = get_api_key("GEMINI_API_KEY")
-            if not api_key:
-                emit_warning(
-                    f"GEMINI_API_KEY is not set (check config or environment); skipping Gemini model '{model_config.get('name')}'."
-                )
-                return None
-
-            model = GeminiModel(model_name=model_config["name"], api_key=api_key)
-            return model
-
         elif model_type == "openai":
             api_key = get_api_key("OPENAI_API_KEY")
             if not api_key:
@@ -743,63 +730,7 @@ class ModelFactory:
             if api_key:
                 provider_args["api_key"] = api_key
             provider = make_openai_provider(provider_identity, **provider_args)
-            model = OpenAIChatModel(model_name=model_config["name"], provider=provider)
-            if model_name == "chatgpt-gpt-5-codex":
-                model = OpenAIResponsesModel(model_config["name"], provider=provider)
-            return model
-        elif model_type == "zai_coding":
-            api_key = get_api_key("ZAI_API_KEY")
-            if not api_key:
-                emit_warning(
-                    f"ZAI_API_KEY is not set (check config or environment); skipping ZAI coding model '{model_config.get('name')}'."
-                )
-                return None
-            provider = make_openai_provider(
-                provider_identity,
-                api_key=api_key,
-                base_url="https://api.z.ai/api/coding/paas/v4",
-            )
-            return ZaiChatModel(
-                model_name=model_config["name"],
-                provider=provider,
-            )
-        elif model_type == "zai_api":
-            api_key = get_api_key("ZAI_API_KEY")
-            if not api_key:
-                emit_warning(
-                    f"ZAI_API_KEY is not set (check config or environment); skipping ZAI API model '{model_config.get('name')}'."
-                )
-                return None
-            provider = make_openai_provider(
-                provider_identity,
-                api_key=api_key,
-                base_url="https://api.z.ai/api/paas/v4/",
-            )
-            return ZaiChatModel(
-                model_name=model_config["name"],
-                provider=provider,
-            )
-
-        elif model_type == "custom_gemini":
-            url, headers, verify, api_key, timeout = get_custom_config(model_config)
-            if not api_key:
-                emit_warning(
-                    f"API key is not set for custom Gemini endpoint; skipping model '{model_config.get('name')}'."
-                )
-                return None
-
-            client = create_async_client(
-                headers=headers,
-                verify=verify,
-                timeout=timeout if timeout is not None else 180,
-            )
-            model = GeminiModel(
-                model_name=model_config["name"],
-                api_key=api_key,
-                base_url=url,
-                http_client=client,
-            )
-            return model
+            return OpenAIChatModel(model_name=model_config["name"], provider=provider)
         elif model_type == "cerebras":
             # Cerebras models may have a custom_endpoint (for proxy/custom URLs)
             # or may use the default Cerebras endpoint with CEREBRAS_API_KEY.
@@ -878,109 +809,5 @@ class ModelFactory:
 
             return OpenAIChatModel(model_name=model_config["name"], provider=provider)
 
-        elif model_type == "gemini_oauth":
-            # Gemini OAuth models use the Code Assist API (cloudcode-pa.googleapis.com)
-            # This is a different API than the standard Generative Language API
-            try:
-                # Try user plugin first, then built-in plugin
-                try:
-                    from gemini_oauth.config import GEMINI_OAUTH_CONFIG
-                    from gemini_oauth.utils import (
-                        get_project_id,
-                        get_valid_access_token,
-                    )
-                except ImportError:
-                    from code_puppy.plugins.gemini_oauth.config import (
-                        GEMINI_OAUTH_CONFIG,
-                    )
-                    from code_puppy.plugins.gemini_oauth.utils import (
-                        get_project_id,
-                        get_valid_access_token,
-                    )
-            except ImportError as exc:
-                emit_warning(
-                    f"Gemini OAuth plugin not available; skipping model '{model_config.get('name')}'. "
-                    f"Error: {exc}"
-                )
-                return None
-
-            # Get a valid access token (refreshing if needed)
-            access_token = get_valid_access_token()
-            if not access_token:
-                emit_warning(
-                    f"Failed to get valid Gemini OAuth token; skipping model '{model_config.get('name')}'. "
-                    "Run /gemini-auth to re-authenticate."
-                )
-                return None
-
-            # Get project ID from stored tokens
-            project_id = get_project_id()
-            if not project_id:
-                emit_warning(
-                    f"No Code Assist project ID found; skipping model '{model_config.get('name')}'. "
-                    "Run /gemini-auth to re-authenticate."
-                )
-                return None
-
-            # Import the Code Assist model wrapper
-            from code_puppy.gemini_code_assist import GeminiCodeAssistModel
-
-            # Create the Code Assist model
-            model = GeminiCodeAssistModel(
-                model_name=model_config["name"],
-                access_token=access_token,
-                project_id=project_id,
-                api_base_url=GEMINI_OAUTH_CONFIG["api_base_url"],
-                api_version=GEMINI_OAUTH_CONFIG["api_version"],
-            )
-            return model
-
-        # NOTE: 'chatgpt_oauth' model type is now handled by the chatgpt_oauth plugin
-        # via the register_model_type callback. See plugins/chatgpt_oauth/register_callbacks.py
-
-        elif model_type == "round_robin":
-            # Get the list of model names to use in the round-robin
-            model_names = model_config.get("models")
-            if not model_names or not isinstance(model_names, list):
-                raise ValueError(
-                    f"Round-robin model '{model_name}' requires a 'models' list in its configuration."
-                )
-
-            # Get the rotate_every parameter (default: 1)
-            rotate_every = model_config.get("rotate_every", 1)
-
-            # Resolve each model name to an actual model instance
-            models = []
-            for name in model_names:
-                # Recursively get each model using the factory
-                model = ModelFactory.get_model(name, config)
-                models.append(model)
-
-            # Create and return the round-robin model
-            return RoundRobinModel(*models, rotate_every=rotate_every)
-
         else:
-            # Check for plugin-registered model type handlers
-            registered_handlers = callbacks.on_register_model_types()
-            for handler_info in registered_handlers:
-                # Handler info can be a list of dicts or a single dict
-                if isinstance(handler_info, list):
-                    handlers = handler_info
-                else:
-                    handlers = [handler_info] if handler_info else []
-
-                for handler_entry in handlers:
-                    if not isinstance(handler_entry, dict):
-                        continue
-                    if handler_entry.get("type") == model_type:
-                        handler = handler_entry.get("handler")
-                        if callable(handler):
-                            try:
-                                return handler(model_name, model_config, config)
-                            except Exception as e:
-                                logger.error(
-                                    f"Plugin handler for model type '{model_type}' failed: {e}"
-                                )
-                                return None
-
             raise ValueError(f"Unsupported model type: {model_type}")
