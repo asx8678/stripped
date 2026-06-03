@@ -18,9 +18,9 @@ from code_puppy.messaging import emit_error, emit_info
 
 from code_puppy.tools.common import atomic_write_text, generate_group_id
 
-# Set to track active subagent invocation tasks
-# NOTE: retained for now because it's referenced by the (now-removed) invoke_agent;
-#       keeping the set here avoids import-time errors if other callers exist.
+# Always empty after Phase 12B (nothing adds to it now that invoke_agent is gone).
+# Still imported by code_puppy/agents/_run_signals.py for the Ctrl+C subagent-cancel
+# path, which is now a no-op. Safe to remove only together with that import.
 _active_subagent_tasks: Set[asyncio.Task] = set()
 
 
