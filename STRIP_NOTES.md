@@ -31,4 +31,4 @@ Branch: `strip-to-spine`. Goal: minimal still-runnable fork (interactive loop ->
 Narrow `pydantic-ai-slim[openai,anthropic,mcp]` -> `[openai,anthropic]`; drop `playwright`, `Pillow`, `azure-identity`, `boto3`, `mcp`; drop `bedrock` + `durable` extras.
 
 ## Phase log (append a line per phase with the commit SHA)
-- Phase 0: baseline + coupling map — <SHA>
+- Phase 0: baseline + coupling map — b85da4388cf6954573cd1ccbfca223cd76279b64

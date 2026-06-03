@@ -22,10 +22,13 @@ def _load_builtin_plugins(plugins_dir: Path) -> list[str]:
     from code_puppy.config import get_safety_permission_level
 
     loaded = []
+    ALLOWLIST = {"agent_skills", "file_permission_handler"}
 
     for item in plugins_dir.iterdir():
         if item.is_dir() and not item.name.startswith("_"):
             plugin_name = item.name
+            if plugin_name not in ALLOWLIST:
+                continue
             callbacks_file = item / "register_callbacks.py"
 
             if callbacks_file.exists():
