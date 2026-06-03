@@ -165,3 +165,19 @@ no changes added to commit (use "git add" and/or "git commit -a")
   - `model_factory.py:660` `claude_code` model type has no handler and falls through to `ValueError`
 
 - config.py ensure_config_exists() does interactive input() on first run (pre-existing main behavior); a non-TTY guard would let -p/CI fail cleanly instead of hanging — optional, out of strip scope.
+
+## Phase 2 (brain strip) — Phases 9-13
+- Phase 9: CLI menus/completions severance — 744d5d8
+- Phase 10: skills marketplace UI removal — 3c2ef61
+- Phase 11: orphaned provider/session files removal — 1b40c0e
+- Phase 12: SKIPPED (agent extras pending user decision)
+- Phase 13: cleanup & hygiene (ruff F-sweep, repo hygiene, dep prune) — <this commit>
+
+### Load-bearing — do NOT delete
+- `claude_cache_client`: Anthropic path still uses `ClaudeCacheAsyncClient` in `model_factory.py`
+- `http_utils` + `reopenable_async_client`: model HTTP client construction in `model_factory.py` / `http_utils.py`
+- `provider_identity`: used 6x in `model_factory.py` for provider resolution
+- `keymap` + `terminal_utils` + `uvx_detection`: cancellation/ctrl-c brain wired through `_runtime`, `cli_runner`, `keymap`
+- `json_agent`: agent discovery/load-bearing in `agent_manager.py`
+
+### Final `.py` count: 83

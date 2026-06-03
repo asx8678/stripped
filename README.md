@@ -1,8 +1,6 @@
 <div align="center">
 
-![Code Puppy Logo](code_puppy.png)
-
-**🐶✨The sassy AI code agent that makes IDEs look outdated** ✨🐶
+**The sassy AI code agent that makes IDEs look outdated** 
 
 [![Version](https://img.shields.io/pypi/v/code-puppy?style=for-the-badge&logo=python&label=Version&color=purple)](https://pypi.org/project/code-puppy/)
 [![Downloads](https://img.shields.io/badge/Downloads-170k%2B-brightgreen?style=for-the-badge&logo=download)](https://pypi.org/project/code-puppy/)
