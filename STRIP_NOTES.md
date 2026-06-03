@@ -163,3 +163,5 @@ no changes added to commit (use "git add" and/or "git commit -a")
   - Remove dead messaging types `UniversalConstructorMessage` / `VersionCheckMessage` and their renderers
   - Clean agent_creator stale UC system-prompt text
   - `model_factory.py:660` `claude_code` model type has no handler and falls through to `ValueError`
+
+- config.py ensure_config_exists() does interactive input() on first run (pre-existing main behavior); a non-TTY guard would let -p/CI fail cleanly instead of hanging — optional, out of strip scope.
