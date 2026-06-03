@@ -31,7 +31,6 @@ class PlanningAgent(BaseAgent):
             "read_file",
             "grep",
             "list_agents",
-            "invoke_agent",
             "list_or_search_skills",
         ]
 

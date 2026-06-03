@@ -8,8 +8,9 @@ from typing import Optional
 
 from rich.console import Console
 
-from code_puppy.config import get_banner_color, get_subagent_verbose
-from code_puppy.tools.subagent_context import is_subagent
+from code_puppy.config import get_banner_color
+
+# NOTE: get_subagent_verbose + is_subagent removed — sub-agent delegation removed (Phase 12B)
 
 
 def display_non_streamed_result(
@@ -34,9 +35,8 @@ def display_non_streamed_result(
         >>> display_non_streamed_result("# Hello\n\nThis is **bold** text.")
         # Renders with AGENT RESPONSE banner and formatted markdown
     """
-    # Skip display for sub-agents unless verbose mode
-    if is_subagent() and not get_subagent_verbose():
-        return
+    # NOTE: sub-agent suppression removed — always display in normal mode (Phase 12B)
+    # (previously: if is_subagent() and not get_subagent_verbose(): return)
 
     import time
 

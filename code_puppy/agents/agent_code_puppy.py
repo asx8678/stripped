@@ -25,7 +25,6 @@ class CodePuppyAgent(BaseAgent):
         """Get the list of tools available to Code-Puppy."""
         return [
             "list_agents",
-            "invoke_agent",
             "list_files",
             "read_file",
             "grep",

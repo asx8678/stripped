@@ -29,7 +29,6 @@ from code_puppy.messaging import (  # Structured messaging types
     get_message_bus,
 )
 from code_puppy.tools.common import generate_group_id, get_user_approval_async
-from code_puppy.tools.subagent_context import is_subagent
 
 # Maximum line length for shell command output to prevent massive token usage
 # This helps avoid exceeding model context limits when commands produce very long lines
@@ -1137,12 +1136,8 @@ async def run_shell_command(
 
     yolo_mode = get_yolo_mode()
 
-    # Check if we're running as a sub-agent (skip confirmation and run silently)
-    running_as_subagent = is_subagent()
-
-    # Only ask for confirmation if we're in an interactive TTY, not in yolo mode,
-    # and NOT running as a sub-agent (sub-agents run without user interaction)
-    if not yolo_mode and not running_as_subagent and sys.stdin.isatty():
+    # Only ask for confirmation if we're in an interactive TTY and not in yolo mode
+    if not yolo_mode and sys.stdin.isatty():
         # No local lock needed -- get_user_approval_async serializes
         # parallel prompts internally so the 2nd, 3rd, 4th... destructive
         # commands queue up cleanly instead of vanishing.
@@ -1196,16 +1191,13 @@ async def run_shell_command(
                     execution_time=None,
                 )
             return result
-    else:
-        time.time()
-
     # Execute the command - sub-agents run silently without keyboard context
     return await _execute_shell_command(
         command=command,
         cwd=cwd,
         timeout=timeout,
         group_id=group_id,
-        silent=running_as_subagent,
+        silent=False,  # is_subagent always False (Phase 12B)
     )
 
 

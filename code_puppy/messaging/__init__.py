@@ -139,16 +139,8 @@ from .rich_renderer import (
     RendererProtocol,
     RichConsoleRenderer,
 )
-from .subagent_console import (
-    STATUS_STYLES as SUBAGENT_STATUS_STYLES,
-)
 
-# Sub-agent console manager
-from .subagent_console import (
-    AgentState,
-    SubAgentConsoleManager,
-    get_subagent_console_manager,
-)
+# NOTE: Sub-agent console manager removed — sub-agent delegation removed (Phase 12B)
 
 # =============================================================================
 # New Structured Messaging API
@@ -262,9 +254,4 @@ __all__ = [
     "DIFF_STYLES",
     # Markdown patches
     "patch_markdown_headings",
-    # Sub-agent console manager
-    "AgentState",
-    "SubAgentConsoleManager",
-    "get_subagent_console_manager",
-    "SUBAGENT_STATUS_STYLES",
 ]

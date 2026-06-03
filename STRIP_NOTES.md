@@ -170,10 +170,11 @@ no changes added to commit (use "git add" and/or "git commit -a")
 - Phase 9: CLI menus/completions severance — 744d5d8
 - Phase 10: skills marketplace UI removal — 3c2ef61
 - Phase 11: orphaned provider/session files removal — 1b40c0e
-- Phase 12A: removed agent-creator + diagnostics/error-logging/run-stats (4 files) — 9f5f601. KEPT: sub-agents, json_agent, agent_planning, _non_streaming_render. Full Phase-12 subagent removal NOT done.
+- Phase 12A: removed agent-creator + diagnostics/error-logging/run-stats (4 files) — 80dba7a. KEPT: sub-agents, json_agent, agent_planning, _non_streaming_render.
 - Phase 13: cleanup & hygiene (ruff F-sweep, repo hygiene, dep prune) — <this commit>
+- Phase 12B: removed sub-agent delegation (deleted subagent_stream_handler, tools/subagent_context, messaging/subagent_console; severed invoke_agent + is_subagent) — <pending commit SHA>. Single-agent only now.
 
-### Phase 2 surgical edits
+### Final `.py` count: 76
 - `agents/_runtime.py`: removed `_diagnostics` import; exception path replaced with `emit_error(str(exc), group_id=group_id)`
 - `agents/__init__.py`: removed `run_stats` side-effect import
 - `config.py`: no change needed — `AgentRunStats` was never referenced outside `__init__.py`

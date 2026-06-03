@@ -18,9 +18,8 @@ from rich.rule import Rule
 # Note: Syntax import removed - file content not displayed, only header
 from rich.table import Table
 
-from code_puppy.config import get_subagent_verbose
+# NOTE: get_subagent_verbose removed — sub-agent delegation removed (Phase 12B)
 from code_puppy.tools.common import format_diff_with_colors
-from code_puppy.tools.subagent_context import is_subagent
 
 from .bus import MessageBus
 from .commands import (
@@ -47,8 +46,6 @@ from .messages import (
     SkillListMessage,
     SpinnerControl,
     StatusPanelMessage,
-    SubAgentInvocationMessage,
-    SubAgentResponseMessage,
     TextMessage,
     UniversalConstructorMessage,
     UserInputRequest,
@@ -182,9 +179,9 @@ class RichConsoleRenderer:
         """Check if sub-agent output should be suppressed.
 
         Returns:
-            True if we're in a sub-agent context and verbose mode is disabled
+            Always False — sub-agent delegation removed (Phase 12B)
         """
-        return is_subagent() and not get_subagent_verbose()
+        return False
 
     # =========================================================================
     # Lifecycle (Synchronous - for compatibility with main.py)
@@ -332,11 +329,6 @@ class RichConsoleRenderer:
             self._render_agent_reasoning(message)
         elif isinstance(message, AgentResponseMessage):
             # Skip rendering - we now stream agent responses via event_stream_handler
-            pass
-        elif isinstance(message, SubAgentInvocationMessage):
-            self._render_subagent_invocation(message)
-        elif isinstance(message, SubAgentResponseMessage):
-            # Skip rendering - we now display sub-agent responses via display_non_streamed_result
             pass
         elif isinstance(message, UniversalConstructorMessage):
             self._render_universal_constructor(message)
@@ -798,52 +790,6 @@ class RichConsoleRenderer:
             self._console.print(md)
         else:
             self._console.print(msg.content)
-
-    def _render_subagent_invocation(self, msg: SubAgentInvocationMessage) -> None:
-        """Render sub-agent invocation header with nice formatting."""
-        # Skip for sub-agents unless verbose mode (avoid nested invocation banners)
-        if self._should_suppress_subagent_output():
-            return
-
-        # Header with agent name and session
-        session_type = (
-            "New session"
-            if msg.is_new_session
-            else f"Continuing ({msg.message_count} messages)"
-        )
-        banner = self._format_banner("invoke_agent", "🤖 INVOKE AGENT")
-        self._console.print(
-            f"\n{banner} "
-            f"[bold cyan]{msg.agent_name}[/bold cyan] "
-            f"[dim]({session_type})[/dim]"
-        )
-
-        # Session ID
-        self._console.print(f"[dim]Session:[/dim] [bold]{msg.session_id}[/bold]")
-
-        # Prompt (truncated if too long, rendered as markdown)
-        prompt_display = (
-            msg.prompt[:200] + "..." if len(msg.prompt) > 200 else msg.prompt
-        )
-        self._console.print("[dim]Prompt:[/dim]")
-        md_prompt = Markdown(prompt_display)
-        self._console.print(md_prompt)
-
-    def _render_subagent_response(self, msg: SubAgentResponseMessage) -> None:
-        """Render sub-agent response with markdown formatting."""
-        # Response header
-        banner = self._format_banner("subagent_response", "✓ AGENT RESPONSE")
-        self._console.print(f"\n{banner} [bold cyan]{msg.agent_name}[/bold cyan]")
-
-        # Render response as markdown
-        md = Markdown(msg.response)
-        self._console.print(md)
-
-        # Footer with session info
-        self._console.print(
-            f"\n[dim]Session [bold]{msg.session_id}[/bold] saved "
-            f"({msg.message_count} messages)[/dim]"
-        )
 
     def _render_universal_constructor(self, msg: UniversalConstructorMessage) -> None:
         """Render universal_constructor tool output with banner."""

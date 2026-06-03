@@ -17,7 +17,7 @@ from .agent_manager import (
 )
 
 # (run_stats side-effect import removed — Phase 12A)
-from .subagent_stream_handler import subagent_stream_handler
+# (subagent_stream_handler import removed — Phase 12B)
 
 __all__ = [
     "clone_agent",
@@ -29,5 +29,4 @@ __all__ = [
     "load_agent",
     "get_agent_descriptions",
     "refresh_agents",
-    "subagent_stream_handler",
 ]

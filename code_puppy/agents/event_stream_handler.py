@@ -25,9 +25,11 @@ from code_puppy.agents.smooth_stream import (
     make_smooth_termflow_writer,
     make_thinking_smoother,
 )
-from code_puppy.config import get_banner_color, get_subagent_verbose
+from code_puppy.config import get_banner_color
+
+# NOTE: get_subagent_verbose removed — sub-agent delegation removed (Phase 12B)
 from code_puppy.messaging.spinner import pause_all_spinners, resume_all_spinners
-from code_puppy.tools.subagent_context import is_subagent
+
 
 logger = logging.getLogger(__name__)
 
@@ -87,9 +89,9 @@ def _should_suppress_output() -> bool:
     """Check if sub-agent output should be suppressed.
 
     Returns:
-        True if we're in a sub-agent context and verbose mode is disabled.
+        Always False — sub-agent delegation removed (Phase 12B)
     """
-    return is_subagent() and not get_subagent_verbose()
+    return False
 
 
 async def event_stream_handler(
