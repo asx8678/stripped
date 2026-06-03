@@ -12,7 +12,6 @@ import argparse
 import asyncio
 import sys
 import traceback
-from pathlib import Path
 
 from rich.console import Console
 
@@ -21,7 +20,6 @@ from code_puppy.agents import get_current_agent
 from code_puppy.command_line.attachments import parse_prompt_attachments
 from code_puppy.command_line.clipboard import get_clipboard_manager
 from code_puppy.config import (
-    AUTOSAVE_DIR,
     COMMAND_HISTORY_FILE,
     ensure_config_exists,
     initialize_command_history_file,
@@ -503,17 +501,8 @@ async def interactive_mode(message_renderer, initial_command: str = None) -> Non
             if command_result is True:
                 continue
             elif isinstance(command_result, str):
-                if command_result == "__AUTOSAVE_LOAD__":
-                    # Autosave load: fall back to text-based picker
-                    from code_puppy.session_storage import (
-                        restore_autosave_interactively,
-                    )
-
-                    await restore_autosave_interactively(Path(AUTOSAVE_DIR))
-                    continue
-                else:
-                    # Command returned a prompt to execute
-                    task = command_result
+                # Command returned a prompt to execute
+                task = command_result
             elif command_result is False:
                 # Command not recognized, continue with normal processing
                 pass

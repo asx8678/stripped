@@ -5,8 +5,6 @@ import os
 import pathlib
 from typing import Optional
 
-from code_puppy.session_storage import save_session
-
 
 def _get_xdg_dir(env_var: str, fallback: str) -> str:
     """
@@ -1670,58 +1668,8 @@ def set_current_autosave_from_session_name(session_name: str) -> str:
 
 def auto_save_session_if_enabled() -> bool:
     """Automatically save the current session if auto_save_session is enabled."""
-    if not get_auto_save_session():
-        return False
-
-    try:
-        import pathlib
-
-        from code_puppy.agents.agent_manager import get_current_agent
-        from code_puppy.messaging import emit_info
-
-        current_agent = get_current_agent()
-        history = current_agent.get_message_history()
-        if not history:
-            return False
-
-        now = datetime.datetime.now()
-        session_name = get_current_autosave_session_name()
-        autosave_dir = pathlib.Path(AUTOSAVE_DIR)
-
-        metadata = save_session(
-            history=history,
-            session_name=session_name,
-            base_dir=autosave_dir,
-            timestamp=now.isoformat(),
-            token_estimator=current_agent.estimate_tokens_for_message,
-            auto_saved=True,
-        )
-
-        # Append conversation-wide TTFT + TG averages if we have any data.
-        stats_suffix = ""
-        try:
-            from code_puppy.agents.run_stats import AgentRunStats
-
-            avg_ttft, avg_gen = AgentRunStats.get_conversation_stats()
-            formatted = AgentRunStats.format_conversation_stats(avg_ttft, avg_gen)
-            if formatted:
-                stats_suffix = f" | {formatted}"
-        except Exception:
-            # Stats are decorative; never block the auto-save line on them.
-            pass
-
-        emit_info(
-            f"🐾 Auto-saved session: {metadata.message_count} messages "
-            f"({metadata.total_tokens} tokens){stats_suffix}"
-        )
-
-        return True
-
-    except Exception as exc:  # pragma: no cover - defensive logging
-        from code_puppy.messaging import emit_error
-
-        emit_error(f"Failed to auto-save session: {exc}")
-        return False
+    # Session autosave removed in Phase 11 — always a no-op now.
+    return False
 
 
 def get_diff_context_lines() -> int:
@@ -1962,19 +1910,6 @@ def load_api_keys_to_environment():
         "OPENROUTER_API_KEY",
         "ZAI_API_KEY",
     ]
-
-    # Dynamically include every env var referenced by a configured model
-    # (e.g. FIREWORKS_API_KEY / WAFER_API_KEY / CROF_API_KEY for local custom
-    # providers). Without this, such keys saved in puppy.cfg never hydrate into
-    # os.environ at startup. Best-effort: never let discovery break startup.
-    try:
-        from code_puppy.provider_credentials import all_required_env_vars
-
-        for env_var in all_required_env_vars():
-            if env_var not in api_key_names:
-                api_key_names.append(env_var)
-    except Exception:
-        pass
 
     # Step 1: Load from .env file if it exists (highest priority)
     # Look for .env in current working directory
