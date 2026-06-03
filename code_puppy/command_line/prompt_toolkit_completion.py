@@ -630,7 +630,10 @@ async def get_input_with_combined_completion(
     # Use SafeFileHistory to handle encoding errors gracefully on Windows
     history = SafeFileHistory(history_file) if history_file else None
     # Build the base completer list, then bolt on any plugin completers.
-    from code_puppy.plugins.ollama_setup.completer import OllamaSetupCompleter
+    try:
+        from code_puppy.plugins.ollama_setup.completer import OllamaSetupCompleter
+    except Exception:
+        OllamaSetupCompleter = None
 
     completer = merge_completers(
         [
@@ -647,7 +650,7 @@ async def get_input_with_combined_completion(
             AgentCompleter(trigger="/switch-agent"),
             AgentCompleter(trigger="/sa"),
             SkillsCompleter(trigger="/skills"),
-            OllamaSetupCompleter(),
+            *([OllamaSetupCompleter()] if OllamaSetupCompleter is not None else []),
             SlashCompleter(),
         ]
     )

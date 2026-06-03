@@ -148,3 +148,5 @@ Changes not staged for commit:
 no changes added to commit (use "git add" and/or "git commit -a")
 
 - Phase 7: ruff F-sweep + prune pyproject deps — b567ce301518d9367413691ca503008c34493648
+
+- Phase 8: fix critical runtime breaks (C1-C4) + cleanups (H2,M1) — 0bbfa366ca499faaad9f0d18a55375354277f17c

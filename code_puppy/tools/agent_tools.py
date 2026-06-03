@@ -364,14 +364,6 @@ def register_invoke_agent(agent):
         previous_session_id = get_session_context()
         set_session_context(session_id)
 
-        # Set browser session for browser tools (qa-kitten, etc.)
-        # This allows parallel agent invocations to each have their own browser
-        from code_puppy.tools.browser.browser_manager import (
-            set_browser_session,
-        )
-
-        browser_session_token = set_browser_session(f"browser-{session_id}")
-
         # Bound up-front so the ``except`` block can always reach for it even
         # if load_agent() itself fails before assignment.
         agent_config = None
@@ -446,20 +438,8 @@ def register_invoke_agent(agent):
             # time we hand the toolsets to pydantic-ai the lifecycle task
             # already owns each cancel scope and pydantic-ai's re-entry
             # hits the ``_running_count > 0`` no-op fast-path.
-            from code_puppy.agents._builder import autostart_bound_servers_async
-            from code_puppy.config import get_value
-            from code_puppy.mcp_ import get_mcp_manager
 
             mcp_servers = []
-            mcp_disabled = get_value("disable_mcp_servers")
-            if not (
-                mcp_disabled and str(mcp_disabled).lower() in ("1", "true", "yes", "on")
-            ):
-                manager = get_mcp_manager()
-                bound_agent_name = getattr(agent_config, "name", None)
-                if bound_agent_name:
-                    await autostart_bound_servers_async(manager, bound_agent_name)
-                mcp_servers = manager.get_servers_for_agent(agent_name=bound_agent_name)
 
             from code_puppy.agents._compaction import make_history_processor
 
@@ -597,11 +577,5 @@ def register_invoke_agent(agent):
         finally:
             # Restore the previous session context
             set_session_context(previous_session_id)
-            # Reset browser session context
-            from code_puppy.tools.browser.browser_manager import (
-                _browser_session_var,
-            )
-
-            _browser_session_var.reset(browser_session_token)
 
     return invoke_agent

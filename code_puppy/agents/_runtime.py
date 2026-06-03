@@ -25,7 +25,17 @@ from typing import Any, Callable, List, Optional, Sequence, Type, Union
 
 import httpcore
 import httpx
-import mcp
+
+try:
+    import mcp
+    from mcp.shared.exceptions import McpError
+except ImportError:
+    mcp = None
+
+    class McpError(Exception):
+        pass
+
+
 from pydantic_ai import (
     BinaryContent,
     DocumentUrl,
@@ -462,7 +472,7 @@ async def run_with_mcp(
                 "by saying 'please continue' or similar.",
                 group_id=group_id,
             )
-        except* mcp.shared.exceptions.McpError as mcp_error:
+        except* McpError as mcp_error:
             # Already announced once by blocking_startup.py with a /mcp logs
             # hint. Don't re-vomit the exception text — just give the user
             # a single short, actionable nudge.

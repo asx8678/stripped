@@ -516,7 +516,6 @@ Your goal is to take users from idea to working agent in one smooth conversation
 
     def get_available_tools(self) -> List[str]:
         """Get all tools needed for agent creation."""
-        from code_puppy.config import get_universal_constructor_enabled
 
         tools = [
             "list_files",
@@ -524,14 +523,9 @@ Your goal is to take users from idea to working agent in one smooth conversation
             "create_file",
             "replace_in_file",
             "delete_snippet",
-            "ask_user_question",
             "list_agents",
             "invoke_agent",
         ]
-
-        # Only include UC if enabled
-        if get_universal_constructor_enabled():
-            tools.append("universal_constructor")
 
         return tools
 
