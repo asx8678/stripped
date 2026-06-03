@@ -220,12 +220,19 @@ def ensure_config_exists():
             missing.append(key)
     if missing:
         # Note: Using sys.stdout here for initial setup before messaging system is available
+        import sys
 
-        # Strip-to-spine: auto-populate defaults for fresh installs
-        # so the app skips straight to the REPL without interactive prompts.
-        defaults = {"puppy_name": "Puppy", "owner_name": "Master"}
+        sys.stdout.write("🐾 Let's get your Puppy ready!\n")
+        sys.stdout.flush()
         for key in missing:
-            val = defaults.get(key, "")
+            if key == "puppy_name":
+                val = input("What should we name the puppy? ").strip()
+            elif key == "owner_name":
+                val = input(
+                    "What's your name (so Code Puppy knows its owner)? "
+                ).strip()
+            else:
+                val = input(f"Enter {key}: ").strip()
             config[DEFAULT_SECTION][key] = val
 
     # Set default values for important config keys if they don't exist
