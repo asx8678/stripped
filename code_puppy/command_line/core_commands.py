@@ -595,20 +595,6 @@ def handle_model_settings_command(command: str) -> bool:
 
 
 @register_command(
-    name="mcp",
-    description="Manage MCP servers (list, start, stop, status, etc.)",
-    usage="/mcp",
-    category="core",
-)
-def handle_mcp_command(command: str) -> bool:
-    """Handle MCP server management."""
-    from code_puppy.command_line.mcp import MCPCommandHandler
-
-    handler = MCPCommandHandler()
-    return handler.handle_mcp_command(command)
-
-
-@register_command(
     name="generate-pr-description",
     description="Generate comprehensive PR description",
     usage="/generate-pr-description [@dir]",

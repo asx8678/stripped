@@ -22,7 +22,6 @@ import pydantic_ai.models
 from code_puppy.agents._builder import (
     build_pydantic_agent,
     build_tool_probe_for_agent,
-    reload_mcp_servers,
 )
 from code_puppy.agents._compaction import summarize
 from code_puppy.agents._history import (
@@ -228,48 +227,8 @@ class BaseAgent(ABC):
 
     # ---- MCP integration shims --------------------------------------------
     def update_mcp_tool_cache_sync(self) -> None:
-        """Best-effort warm of each MCP server's ``_cached_tools``.
-
-        Pydantic-ai caches MCP tool defs on each server after the first
-        ``list_tools()`` call. We piggy-back on that cache for context-window
-        overhead estimates (see ``_history._estimate_mcp_tool_tokens``).
-
-        Without this warm-up the cache stays empty until the first agent run,
-        so the ``/context`` badge under-reports MCP overhead right after
-        ``/mcp start``. Here we schedule ``list_tools()`` for any server that
-        looks running, but we never block and we swallow all errors — the
-        cache will eventually be populated by the agent run itself.
-        """
-        import asyncio
-
-        servers = getattr(self, "_mcp_servers", None) or []
-        if not servers:
-            return None
-
-        try:
-            loop = asyncio.get_event_loop()
-        except RuntimeError:
-            return None
-        if loop is None or not loop.is_running():
-            return None
-
-        async def _warm(server: Any) -> None:
-            try:
-                if getattr(server, "_cached_tools", None):
-                    return
-                if not getattr(server, "is_running", False):
-                    return
-                await server.list_tools()
-            except Exception:
-                # Cache stays empty; estimator handles that gracefully.
-                return
-
-        for server in servers:
-            try:
-                loop.create_task(_warm(server))
-            except Exception:
-                continue
+        """MCP tool cache warming removed with the MCP subsystem."""
         return None
 
     def reload_mcp_servers(self) -> List[Any]:
-        return reload_mcp_servers(agent_name=self.name)
+        return []

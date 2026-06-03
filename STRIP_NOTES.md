@@ -32,4 +32,117 @@ Narrow `pydantic-ai-slim[openai,anthropic,mcp]` -> `[openai,anthropic]`; drop `p
 
 ## Phase log (append a line per phase with the commit SHA)
 - Phase 0: baseline + coupling map — b85da4388cf6954573cd1ccbfca223cd76279b64
-- Phase 2: remove unused plugins — 
+- Phase 1: allowlist plugin load (agent_skills + file_permission_handler) — 3acc7e732925d701e8129beec5e6547dc23c7679
+- Phase 2: remove unused plugins — f85fc9a02986aa3680e401615014b0beb0002b98
+
+- Phase 3: remove MCP subsystem — On branch strip-to-spine
+Changes not staged for commit:
+  (use "git add/rm <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   STRIP_NOTES.md
+	modified:   code_puppy/agents/_builder.py
+	modified:   code_puppy/agents/base_agent.py
+	modified:   code_puppy/command_line/agent_menu.py
+	modified:   code_puppy/command_line/core_commands.py
+	deleted:    code_puppy/command_line/mcp/__init__.py
+	deleted:    code_puppy/command_line/mcp/base.py
+	deleted:    code_puppy/command_line/mcp/catalog_server_installer.py
+	deleted:    code_puppy/command_line/mcp/custom_server_form.py
+	deleted:    code_puppy/command_line/mcp/custom_server_installer.py
+	deleted:    code_puppy/command_line/mcp/edit_command.py
+	deleted:    code_puppy/command_line/mcp/handler.py
+	deleted:    code_puppy/command_line/mcp/help_command.py
+	deleted:    code_puppy/command_line/mcp/install_command.py
+	deleted:    code_puppy/command_line/mcp/install_menu.py
+	deleted:    code_puppy/command_line/mcp/list_command.py
+	deleted:    code_puppy/command_line/mcp/logs_command.py
+	deleted:    code_puppy/command_line/mcp/remove_command.py
+	deleted:    code_puppy/command_line/mcp/restart_command.py
+	deleted:    code_puppy/command_line/mcp/search_command.py
+	deleted:    code_puppy/command_line/mcp/silence_warning_command.py
+	deleted:    code_puppy/command_line/mcp/start_all_command.py
+	deleted:    code_puppy/command_line/mcp/start_command.py
+	deleted:    code_puppy/command_line/mcp/status_command.py
+	deleted:    code_puppy/command_line/mcp/stop_all_command.py
+	deleted:    code_puppy/command_line/mcp/stop_command.py
+	deleted:    code_puppy/command_line/mcp/utils.py
+	deleted:    code_puppy/command_line/mcp/wizard_utils.py
+	deleted:    code_puppy/command_line/mcp_binding_menu.py
+	deleted:    code_puppy/command_line/mcp_completion.py
+	deleted:    code_puppy/mcp_/__init__.py
+	deleted:    code_puppy/mcp_/agent_bindings.py
+	deleted:    code_puppy/mcp_/async_lifecycle.py
+	deleted:    code_puppy/mcp_/blocking_startup.py
+	deleted:    code_puppy/mcp_/captured_stdio_server.py
+	deleted:    code_puppy/mcp_/circuit_breaker.py
+	deleted:    code_puppy/mcp_/config_wizard.py
+	deleted:    code_puppy/mcp_/dashboard.py
+	deleted:    code_puppy/mcp_/error_isolation.py
+	deleted:    code_puppy/mcp_/examples/retry_example.py
+	deleted:    code_puppy/mcp_/health_monitor.py
+	deleted:    code_puppy/mcp_/managed_server.py
+	deleted:    code_puppy/mcp_/manager.py
+	deleted:    code_puppy/mcp_/mcp_logs.py
+	deleted:    code_puppy/mcp_/registry.py
+	deleted:    code_puppy/mcp_/retry_manager.py
+	deleted:    code_puppy/mcp_/server_registry_catalog.py
+	deleted:    code_puppy/mcp_/status_tracker.py
+	deleted:    code_puppy/mcp_/system_tools.py
+	deleted:    code_puppy/mcp_prompts/__init__.py
+	deleted:    code_puppy/mcp_prompts/hook_creator.py
+	deleted:    tests/agents/test_base_agent_run_mcp.py
+	deleted:    tests/agents/test_builder_autostart_mcp.py
+	deleted:    tests/agents/test_json_agent_mcp_servers.py
+	deleted:    tests/command_line/mcp/__init__.py
+	deleted:    tests/command_line/mcp/test_catalog_server_installer.py
+	deleted:    tests/command_line/mcp/test_custom_server_form.py
+	deleted:    tests/command_line/mcp/test_custom_server_installer.py
+	deleted:    tests/command_line/mcp/test_edit_command.py
+	deleted:    tests/command_line/mcp/test_handler.py
+	deleted:    tests/command_line/mcp/test_help_command.py
+	deleted:    tests/command_line/mcp/test_install_command.py
+	deleted:    tests/command_line/mcp/test_install_menu.py
+	deleted:    tests/command_line/mcp/test_list_command.py
+	deleted:    tests/command_line/mcp/test_logs_command.py
+	deleted:    tests/command_line/mcp/test_mcp_utils.py
+	deleted:    tests/command_line/mcp/test_remove_command.py
+	deleted:    tests/command_line/mcp/test_restart_command.py
+	deleted:    tests/command_line/mcp/test_search_command.py
+	deleted:    tests/command_line/mcp/test_start_all_command.py
+	deleted:    tests/command_line/mcp/test_start_command.py
+	deleted:    tests/command_line/mcp/test_status_command.py
+	deleted:    tests/command_line/mcp/test_stop_all_command.py
+	deleted:    tests/command_line/mcp/test_stop_command.py
+	deleted:    tests/command_line/mcp/test_wizard_utils.py
+	deleted:    tests/command_line/test_mcp_completion.py
+	deleted:    tests/mcp/conftest.py
+	deleted:    tests/mcp/test_agent_bindings.py
+	deleted:    tests/mcp/test_agent_bindings_json_merge.py
+	deleted:    tests/mcp/test_async_lifecycle.py
+	deleted:    tests/mcp/test_blocking_startup.py
+	deleted:    tests/mcp/test_blocking_startup_coverage.py
+	deleted:    tests/mcp/test_captured_stdio_full_coverage.py
+	deleted:    tests/mcp/test_captured_stdio_server.py
+	deleted:    tests/mcp/test_circuit_breaker_comprehensive.py
+	deleted:    tests/mcp/test_circuit_breaker_half_open_race.py
+	deleted:    tests/mcp/test_config_wizard.py
+	deleted:    tests/mcp/test_dashboard.py
+	deleted:    tests/mcp/test_error_isolation.py
+	deleted:    tests/mcp/test_health_monitor.py
+	deleted:    tests/mcp/test_managed_server.py
+	deleted:    tests/mcp/test_managed_server_coverage.py
+	deleted:    tests/mcp/test_manager_extended.py
+	deleted:    tests/mcp/test_mcp_list_search_commands.py
+	deleted:    tests/mcp/test_mcp_logs.py
+	deleted:    tests/mcp/test_mcp_start_stop_commands.py
+	deleted:    tests/mcp/test_mcp_status_command.py
+	deleted:    tests/mcp/test_registry_comprehensive.py
+	deleted:    tests/mcp/test_registry_coverage.py
+	deleted:    tests/mcp/test_retry_manager.py
+	deleted:    tests/mcp/test_server_registry_catalog.py
+	deleted:    tests/mcp/test_silence_warning_command.py
+	deleted:    tests/mcp/test_status_tracker_full_coverage.py
+	deleted:    tests/mcp/test_system_tools.py
+	deleted:    tests/test_mcp_init.py
+
+no changes added to commit (use "git add" and/or "git commit -a")
