@@ -25,10 +25,7 @@ from code_puppy.config import (
     AUTOSAVE_DIR,
     COMMAND_HISTORY_FILE,
     ensure_config_exists,
-    finalize_autosave_session,
-    get_current_autosave_session_name,
     initialize_command_history_file,
-    record_terminal_session,
     save_command_to_history,
 )
 from code_puppy.http_utils import find_available_port
@@ -39,67 +36,8 @@ from code_puppy.keymap import (
     validate_cancel_agent_key,
     validate_pause_agent_key,
 )
-from code_puppy.messaging import emit_info
-from code_puppy.terminal_utils import (
-    print_truecolor_warning,
-    reset_unix_terminal,
-    reset_windows_terminal_ansi,
-    reset_windows_terminal_full,
-)
-from code_puppy.version_checker import default_version_mismatch_behavior
 
 plugins.load_plugin_callbacks()
-
-
-def _resume_session_from_path(raw_path: str) -> None:
-    """Restore agent message history from a saved .pkl session file.
-
-    Accepts any path (autosaves, contexts, somewhere weird on disk). We don't
-    care where it lives — we just decompose into (parent_dir, stem) and reuse
-    ``session_storage.load_session`` so we stay DRY.
-    """
-    from code_puppy.agents.agent_manager import get_current_agent
-    from code_puppy.messaging import emit_error, emit_success
-    from code_puppy.session_storage import load_session
-
-    session_path = Path(raw_path).expanduser().resolve()
-
-    if not session_path.exists():
-        emit_error(f"--resume: session file not found: {session_path}")
-        sys.exit(1)
-
-    if session_path.suffix != ".pkl":
-        emit_error(
-            f"--resume: expected a .pkl session file, got '{session_path.suffix}': {session_path}"
-        )
-        sys.exit(1)
-
-    try:
-        history = load_session(session_path.stem, session_path.parent)
-    except Exception as exc:
-        emit_error(f"--resume: failed to load session: {exc}")
-        sys.exit(1)
-
-    try:
-        agent = get_current_agent()
-        agent.set_message_history(history)
-    except Exception as exc:
-        emit_error(f"--resume: failed to attach history to agent: {exc}")
-        sys.exit(1)
-
-    # Rotate autosave id so we don't clobber the original file we just resumed.
-    try:
-        from code_puppy.config import rotate_autosave_id
-
-        rotate_autosave_id()
-    except Exception:
-        pass  # autosave rotation is best-effort
-
-    total_tokens = sum(agent.estimate_tokens_for_message(m) for m in history)
-    emit_success(
-        f"✅ Resumed session: {len(history)} messages ({total_tokens} tokens)\n"
-        f"📁 From: {session_path}"
-    )
 
 
 async def main():
@@ -135,13 +73,6 @@ async def main():
         "-m",
         type=str,
         help="Specify which model to use (e.g., --model gpt-5)",
-    )
-    parser.add_argument(
-        "--resume",
-        "-r",
-        type=str,
-        metavar="PATH",
-        help="Resume a saved session from a .pkl file (e.g. ~/.code_puppy/contexts/foo.pkl)",
     )
     parser.add_argument(
         "command", nargs="*", help="Run a single command (deprecated, use -p instead)"
@@ -238,56 +169,6 @@ async def main():
         emit_error(str(e))
         sys.exit(1)
 
-    # Show uvx detection notice if we're on Windows + uvx
-    # Also disable Ctrl+C at the console level to prevent terminal bricking
-    try:
-        from code_puppy.uvx_detection import should_use_alternate_cancel_key
-
-        if should_use_alternate_cancel_key():
-            from code_puppy.terminal_utils import (
-                disable_windows_ctrl_c,
-                install_windows_ctrl_c_swallower,
-                set_keep_ctrl_c_disabled,
-            )
-
-            # Layer 1: Strip ENABLE_PROCESSED_INPUT so the console doesn't
-            # translate Ctrl+C into a signal in the first place.
-            disable_windows_ctrl_c()
-
-            # Layer 2: Register an OS-level SetConsoleCtrlHandler that
-            # swallows CTRL_C_EVENT even if something flips processed-input
-            # back on (e.g. prompt_toolkit, a child shell exit, etc).
-            install_windows_ctrl_c_swallower()
-
-            # Set flag to keep console mode clamped (prompt_toolkit may
-            # re-enable processed input on entry/exit).
-            set_keep_ctrl_c_disabled(True)
-
-            # Use print directly - emit_system_message can get cleared by ANSI codes
-            print(
-                "🔧 Detected uvx launch on Windows - using Ctrl+K for cancellation "
-                "(Ctrl+C is disabled to prevent terminal issues)"
-            )
-
-            # Layer 3: Python-level SIGINT backup. If a SIGINT somehow
-            # squeezes past layers 1 and 2, this handler resets the terminal
-            # and re-clamps everything before returning. It deliberately
-            # does NOT cancel the agent — Ctrl+K owns that on uvx+Windows.
-            import signal
-
-            from code_puppy.terminal_utils import reset_windows_terminal_full
-
-            def _uvx_protective_sigint_handler(_sig, _frame):
-                """Protective SIGINT handler for Windows+uvx."""
-                reset_windows_terminal_full()
-                # Re-arm all the guards in case something dropped them.
-                disable_windows_ctrl_c()
-                install_windows_ctrl_c_swallower()
-
-            signal.signal(signal.SIGINT, _uvx_protective_sigint_handler)
-    except ImportError:
-        pass  # uvx_detection module not available, ignore
-
     # Load API keys from puppy.cfg into environment variables
     from code_puppy.config import load_api_keys_to_environment
 
@@ -343,29 +224,7 @@ async def main():
 
     current_version = __version__
 
-    no_version_update = os.getenv("NO_VERSION_UPDATE", "").lower() in (
-        "1",
-        "true",
-        "yes",
-        "on",
-    )
-    if no_version_update:
-        version_msg = f"Current version: {current_version}"
-        update_disabled_msg = (
-            "Update phase disabled because NO_VERSION_UPDATE is set to 1 or true"
-        )
-        emit_system_message(version_msg)
-        emit_system_message(update_disabled_msg)
-    else:
-        if len(callbacks.get_callbacks("version_check")):
-            await callbacks.on_version_check(current_version)
-        else:
-            default_version_mismatch_behavior(current_version)
-
     await callbacks.on_startup()
-
-    if args.resume:
-        _resume_session_from_path(args.resume)
 
     global shutdown_flag
     shutdown_flag = False
@@ -435,7 +294,6 @@ async def interactive_mode(message_renderer, initial_command: str = None) -> Non
     emit_system_message(
         "Use /diff to configure diff highlighting colors for file changes."
     )
-    emit_system_message("To re-run the tutorial, use /tutorial.")
     emit_system_message(
         "!<command> to run shell commands directly (e.g., !git status)",
     )
@@ -549,8 +407,7 @@ async def interactive_mode(message_renderer, initial_command: str = None) -> Non
 
             from code_puppy.command_line.onboarding_wizard import run_onboarding_wizard
             from code_puppy.config import set_model_name
-            from code_puppy.messaging import emit_info
-
+            
             with concurrent.futures.ThreadPoolExecutor() as executor:
                 future = executor.submit(lambda: asyncio.run(run_onboarding_wizard()))
                 result = future.result(timeout=300)
@@ -583,8 +440,7 @@ async def interactive_mode(message_renderer, initial_command: str = None) -> Non
 
     while True:
         from code_puppy.agents.agent_manager import get_current_agent
-        from code_puppy.messaging import emit_info
-
+        
         # Get the custom prompt from the current agent, or use default
         current_agent = get_current_agent()
         user_prompt = current_agent.get_user_prompt() or "Enter your coding task:"
@@ -594,9 +450,6 @@ async def interactive_mode(message_renderer, initial_command: str = None) -> Non
         try:
             # Use prompt_toolkit for enhanced input with path completion
             try:
-                # Windows-specific: Reset terminal state before prompting
-                reset_windows_terminal_ansi()
-
                 # Use the async version of get_input_with_combined_completion
                 task = await get_input_with_combined_completion(
                     get_prompt_with_active_model(), history_file=COMMAND_HISTORY_FILE
@@ -616,9 +469,6 @@ async def interactive_mode(message_renderer, initial_command: str = None) -> Non
 
         except (KeyboardInterrupt, asyncio.CancelledError):
             # Handle Ctrl+C - cancel input and continue
-            # Windows-specific: Reset terminal state after interrupt to prevent
-            # the terminal from becoming unresponsive (can't type characters)
-            reset_windows_terminal_full()
             from code_puppy.callbacks import on_interactive_turn_cancel
             from code_puppy.messaging import emit_warning
 
@@ -798,9 +648,7 @@ async def interactive_mode(message_renderer, initial_command: str = None) -> Non
                 )
                 # Check if the task was cancelled (but don't show message if we just killed processes)
                 if result is None:
-                    # Windows-specific: Reset terminal state after cancellation
-                    reset_windows_terminal_ansi()
-                    # Re-disable Ctrl+C if needed (uvx mode)
+                        # Re-disable Ctrl+C if needed (uvx mode)
                     try:
                         from code_puppy.terminal_utils import ensure_ctrl_c_disabled
 
@@ -849,11 +697,6 @@ async def interactive_mode(message_renderer, initial_command: str = None) -> Non
 
                 get_queue_console().print_exception()
 
-            # Auto-save session if enabled (moved outside the try block to avoid being swallowed)
-            from code_puppy.config import auto_save_session_if_enabled
-
-            auto_save_session_if_enabled()
-
             # ================================================================
             # CONTINUATION LOOP: plugins may request follow-up prompt runs.
             # ================================================================
@@ -888,10 +731,9 @@ async def interactive_mode(message_renderer, initial_command: str = None) -> Non
                     break
 
                 if continuation.get("clear_context", False):
-                    new_session_id = finalize_autosave_session()
                     current_agent.clear_message_history()
                     emit_system_message(
-                        f"Context cleared. Session rotated to: {new_session_id}"
+                        "Context cleared."
                     )
 
                 delay = float(continuation.get("delay") or 0)
@@ -930,7 +772,6 @@ async def interactive_mode(message_renderer, initial_command: str = None) -> Non
                         display_console.file.flush()
                     await asyncio.sleep(0.1)
 
-                    auto_save_session_if_enabled()
                     continuation_result = result
                     continuation_success = True
 
@@ -944,14 +785,6 @@ async def interactive_mode(message_renderer, initial_command: str = None) -> Non
                     get_queue_console().print_exception()
                     auto_save_session_if_enabled()
 
-            # Re-disable Ctrl+C if needed (uvx mode) - must be done after
-            # each iteration as various operations may restore console mode
-            try:
-                from code_puppy.terminal_utils import ensure_ctrl_c_disabled
-
-                ensure_ctrl_c_disabled()
-            except ImportError:
-                pass
 
 
 async def run_prompt_with_attachments(
@@ -1060,8 +893,7 @@ async def execute_single_prompt(prompt: str, message_renderer) -> None:
         execute_shell_passthrough(prompt)
         return
 
-    from code_puppy.messaging import emit_info
-
+    
     emit_info(f"Executing prompt: {prompt}")
 
     try:
