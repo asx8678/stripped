@@ -6,12 +6,7 @@ discovered by the command registry system.
 
 import os
 
-from code_puppy.command_line.agent_menu import interactive_agent_picker
 from code_puppy.command_line.command_registry import register_command
-from code_puppy.command_line.model_picker_completion import (
-    interactive_model_picker,
-    update_model_in_input,
-)
 from code_puppy.command_line.utils import make_directory_table
 from code_puppy.config import finalize_autosave_session
 from code_puppy.messaging import emit_error, emit_info
@@ -38,8 +33,6 @@ def handle_help_command(command: str) -> bool:
     """Show commands help."""
     import uuid
 
-    from code_puppy.messaging import emit_info
-
     group_id = str(uuid.uuid4())
     help_text = get_commands_help()
     emit_info(help_text, message_group_id=group_id)
@@ -56,7 +49,7 @@ def handle_cd_command(command: str) -> bool:
     """Change directory or list current directory."""
     import shlex
 
-    from code_puppy.messaging import emit_error, emit_info, emit_success
+    from code_puppy.messaging import emit_success
 
     try:
         if os.name == "nt":
@@ -90,15 +83,7 @@ def handle_cd_command(command: str) -> bool:
         if os.path.isdir(target):
             os.chdir(target)
             emit_success(f"Changed directory to: {target}")
-            # Refresh the @file fuzzy index for the new cwd. Async/non-blocking;
-            # the prompt stays snappy and the next @completion sees fresh data.
-            try:
-                from code_puppy.command_line import file_index
-
-                file_index.reindex(target, blocking=False)
-            except Exception:
-                # Index is a nicety, not load-bearing. Never block /cd on it.
-                pass
+            # File index refresh removed in Phase 9 strip.
             # Reload the agent to pick up new working directory context.
             # This ensures AGENTS.md is re-read and the system prompt is
             # updated -- without this, the PydanticAgent instructions stay
@@ -131,8 +116,6 @@ def handle_tools_command(command: str) -> bool:
     """Display available tools."""
     from rich.markdown import Markdown
 
-    from code_puppy.messaging import emit_info
-
     markdown_content = Markdown(tools_content)
     emit_info(markdown_content)
     return True
@@ -152,7 +135,7 @@ def handle_paste_command(command: str) -> bool:
         get_clipboard_manager,
         has_image_in_clipboard,
     )
-    from code_puppy.messaging import emit_info, emit_success, emit_warning
+    from code_puppy.messaging import emit_success, emit_warning
 
     if not has_image_in_clipboard():
         emit_warning("No image found in clipboard")
@@ -210,124 +193,51 @@ def handle_agent_command(command: str) -> bool:
         get_current_agent,
         set_current_agent,
     )
-    from code_puppy.messaging import emit_error, emit_info, emit_success, emit_warning
+    from code_puppy.messaging import emit_success, emit_warning
 
     tokens = command.split()
 
     if len(tokens) == 1:
-        # Show interactive agent picker
-        try:
-            # Run the async picker using asyncio utilities
-            # Since we're called from an async context but this function is sync,
-            # we need to carefully schedule and wait for the coroutine
-            import asyncio
-            import concurrent.futures
-            import uuid
+        # Interactive agent picker not available in this build
+        import uuid
 
-            # Create a new event loop in a thread and run the picker there
-            with concurrent.futures.ThreadPoolExecutor() as executor:
-                future = executor.submit(
-                    lambda: asyncio.run(interactive_agent_picker())
-                )
-                selected_agent = future.result(timeout=300)  # 5 min timeout
+        current_agent = get_current_agent()
+        available_agents = get_available_agents()
+        descriptions = get_agent_descriptions()
 
-            # Drain any deferred pin-reloads queued from inside the picker.
-            # These MUST run on the main loop, not on the worker's transient
-            # one --- see the comment in agent_menu._PENDING_PIN_RELOADS.
-            from code_puppy.command_line.agent_menu import (
-                apply_pending_pin_reload,
-                consume_pending_pin_reloads,
+        group_id = str(uuid.uuid4())
+        emit_info(
+            Text.from_markup(
+                f"[bold green]Current Agent:[/bold green] {current_agent.display_name}"
+            ),
+            message_group=group_id,
+        )
+        emit_info(
+            Text.from_markup(f"[dim]{current_agent.description}[/dim]\n"),
+            message_group=group_id,
+        )
+        emit_info(
+            Text.from_markup("[bold magenta]Available Agents:[/bold magenta]"),
+            message_group=group_id,
+        )
+        for name, display_name in available_agents.items():
+            description = descriptions.get(name, "No description")
+            current_marker = (
+                " [green]← current[/green]" if name == current_agent.name else ""
             )
-
-            for pin_agent, pin_model in consume_pending_pin_reloads():
-                apply_pending_pin_reload(pin_agent, pin_model)
-
-            if selected_agent:
-                current_agent = get_current_agent()
-                # Check if we're already using this agent
-                if current_agent.name == selected_agent:
-                    group_id = str(uuid.uuid4())
-                    emit_info(
-                        f"Already using agent: {current_agent.display_name}",
-                        message_group=group_id,
-                    )
-                    return True
-
-                # Switch to the new agent
-                group_id = str(uuid.uuid4())
-                new_session_id = finalize_autosave_session()
-                if not set_current_agent(selected_agent):
-                    emit_warning(
-                        "Agent switch failed after autosave rotation. Your context was preserved.",
-                        message_group=group_id,
-                    )
-                    return True
-
-                new_agent = get_current_agent()
-                new_agent.reload_code_generation_agent()
-                emit_success(
-                    f"Switched to agent: {new_agent.display_name}",
-                    message_group=group_id,
-                )
-                emit_info(f"{new_agent.description}", message_group=group_id)
-                emit_info(
-                    Text.from_markup(
-                        f"[dim]Auto-save session rotated to: {new_session_id}[/dim]"
-                    ),
-                    message_group=group_id,
-                )
-            else:
-                emit_warning("Agent selection cancelled")
-            return True
-        except Exception as e:
-            # Fallback to old behavior if picker fails
-            import traceback
-            import uuid
-
-            emit_warning(f"Interactive picker failed: {e}")
-            emit_warning(f"Traceback: {traceback.format_exc()}")
-
-            # Show current agent and available agents
-            current_agent = get_current_agent()
-            available_agents = get_available_agents()
-            descriptions = get_agent_descriptions()
-
-            # Generate a group ID for all messages in this command
-            group_id = str(uuid.uuid4())
-
             emit_info(
                 Text.from_markup(
-                    f"[bold green]Current Agent:[/bold green] {current_agent.display_name}"
+                    f"  [cyan]{name:<12}[/cyan] {display_name}{current_marker}"
                 ),
                 message_group=group_id,
             )
-            emit_info(
-                Text.from_markup(f"[dim]{current_agent.description}[/dim]\n"),
-                message_group=group_id,
-            )
+            emit_info(f"    {description}", message_group=group_id)
 
-            emit_info(
-                Text.from_markup("[bold magenta]Available Agents:[/bold magenta]"),
-                message_group=group_id,
-            )
-            for name, display_name in available_agents.items():
-                description = descriptions.get(name, "No description")
-                current_marker = (
-                    " [green]← current[/green]" if name == current_agent.name else ""
-                )
-                emit_info(
-                    Text.from_markup(
-                        f"  [cyan]{name:<12}[/cyan] {display_name}{current_marker}"
-                    ),
-                    message_group=group_id,
-                )
-                emit_info(f"    {description}", message_group=group_id)
-
-            emit_info(
-                Text.from_markup("\n[yellow]Usage:[/yellow] /agent <agent-name>"),
-                message_group=group_id,
-            )
-            return True
+        emit_info(
+            Text.from_markup("\n[yellow]Usage:[/yellow] /agent <agent-name>"),
+            message_group=group_id,
+        )
+        return True
 
     elif len(tokens) == 2:
         agent_name = tokens[1].lower()
@@ -383,164 +293,55 @@ def handle_agent_command(command: str) -> bool:
 
 @register_command(
     name="model",
-    description="Set active model",
+    description="Show active model (interactive picker not available in this build)",
     usage="/model, /m <model>",
     aliases=["m"],
     category="core",
 )
 def handle_model_command(command: str) -> bool:
-    """Set the active model."""
-    import asyncio
+    """Show the active model."""
+    import uuid
 
-    from code_puppy.command_line.model_picker_completion import (
-        get_active_model,
-        load_model_names,
-        set_active_model,
+    from code_puppy.messaging import emit_warning
+    from code_puppy.config import get_value
+
+    current_model = get_value("model") or "(default)"
+    group_id = str(uuid.uuid4())
+    emit_info(
+        f"Active model: {current_model}",
+        message_group=group_id,
     )
-    from code_puppy.messaging import emit_success, emit_warning
-
-    tokens = command.split()
-
-    # If just /model or /m with no args, show interactive picker
-    if len(tokens) == 1:
-        try:
-            # Run the async picker using asyncio utilities
-            # Since we're called from an async context but this function is sync,
-            # we need to carefully schedule and wait for the coroutine
-            import concurrent.futures
-
-            # Create a new event loop in a thread and run the picker there
-            with concurrent.futures.ThreadPoolExecutor() as executor:
-                future = executor.submit(
-                    lambda: asyncio.run(interactive_model_picker())
-                )
-                selected_model = future.result(timeout=300)  # 5 min timeout
-
-            if selected_model:
-                set_active_model(selected_model)
-                emit_success(f"Active model set and loaded: {selected_model}")
-            else:
-                emit_warning("Model selection cancelled")
-            return True
-        except Exception as e:
-            # Fallback to old behavior if picker fails
-            import traceback
-
-            emit_warning(f"Interactive picker failed: {e}")
-            emit_warning(f"Traceback: {traceback.format_exc()}")
-            model_names = load_model_names()
-            emit_warning("Usage: /model <model-name> or /m <model-name>")
-            emit_warning(f"Available models: {', '.join(model_names)}")
-            return True
-
-    # Handle both /model and /m for backward compatibility
-    model_command = command
-    if command.startswith("/model"):
-        # Convert /model to /m for internal processing
-        model_command = command.replace("/model", "/m", 1)
-
-    # If model matched, set it
-    new_input = update_model_in_input(model_command)
-    if new_input is not None:
-        model = get_active_model()
-        emit_success(f"Active model set and loaded: {model}")
-        return True
-
-    # If no model matched, show error
-    model_names = load_model_names()
-    emit_warning("Usage: /model <model-name> or /m <model-name>")
-    emit_warning(f"Available models: {', '.join(model_names)}")
+    emit_warning("Interactive model picker not available in this build")
     return True
 
 
 @register_command(
     name="add_model",
-    description="Browse and add models from models.dev catalog",
+    description="Browse and add models from models.dev catalog (not available in this build)",
     usage="/add_model",
     category="core",
 )
 def handle_add_model_command(command: str) -> bool:
-    """Launch interactive model browser TUI."""
-    from code_puppy.command_line.add_model_menu import interactive_model_picker
-    from code_puppy.tools.command_runner import set_awaiting_user_input
+    """Model browser not available in this build."""
+    from code_puppy.messaging import emit_warning
 
-    set_awaiting_user_input(True)
-    try:
-        # interactive_model_picker is now synchronous - no async complications!
-        result = interactive_model_picker()
-
-        if result:
-            emit_info("Successfully added model configuration")
-        return True
-    except KeyboardInterrupt:
-        # User cancelled - this is expected behavior
-        return True
-    except Exception as e:
-        emit_error(f"Failed to launch model browser: {e}")
-        return False
-    finally:
-        set_awaiting_user_input(False)
+    emit_warning("Interactive model browser not available in this build")
+    return True
 
 
 @register_command(
     name="model_settings",
-    description="Configure per-model settings (temperature, seed, etc.)",
+    description="Configure per-model settings (temperature, seed, etc.) (not available in this build)",
     usage="/model_settings [--show [model_name]]",
     aliases=["ms"],
     category="config",
 )
 def handle_model_settings_command(command: str) -> bool:
-    """Launch interactive model settings TUI.
+    """Model settings TUI not available in this build."""
+    from code_puppy.messaging import emit_warning
 
-    Opens a TUI showing all available models. Select a model to configure
-    its settings (temperature, seed, etc.). ESC closes the TUI.
-
-    Use --show [model_name] to display current settings without the TUI.
-    """
-    from code_puppy.command_line.model_settings_menu import (
-        interactive_model_settings,
-        show_model_settings_summary,
-    )
-    from code_puppy.messaging import emit_error, emit_info, emit_success, emit_warning
-    from code_puppy.tools.command_runner import set_awaiting_user_input
-
-    tokens = command.split()
-
-    # Check for --show flag to just display current settings
-    if "--show" in tokens:
-        model_name = None
-        for t in tokens[1:]:
-            if not t.startswith("--"):
-                model_name = t
-                break
-        show_model_settings_summary(model_name)
-        return True
-
-    set_awaiting_user_input(True)
-    try:
-        result = interactive_model_settings()
-
-        if result:
-            emit_success("Model settings updated successfully")
-
-        # Always reload the active agent so settings take effect
-        from code_puppy.agents import get_current_agent
-
-        try:
-            current_agent = get_current_agent()
-            current_agent.reload_code_generation_agent()
-            emit_info("Active agent reloaded")
-        except Exception as reload_error:
-            emit_warning(f"Agent reload failed: {reload_error}")
-
-        return True
-    except KeyboardInterrupt:
-        return True
-    except Exception as e:
-        emit_error(f"Failed to launch model settings: {e}")
-        return False
-    finally:
-        set_awaiting_user_input(False)
+    emit_warning("Interactive model settings not available in this build")
+    return True
 
 
 @register_command(

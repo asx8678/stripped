@@ -10,7 +10,6 @@ apply_all_patches()
 
 import argparse
 import asyncio
-import os
 import sys
 import traceback
 from pathlib import Path
@@ -483,8 +482,7 @@ async def interactive_mode(message_renderer, initial_command: str = None) -> Non
             break
 
         # Backward-compat: bare `clear` (no slash) is rewritten to `/clear`
-        # so the registered handler in session_commands is the single source
-        # of truth. The slash form is dispatched normally below.
+        # so the registered handler is the single source of truth.
         if task.strip().lower() == "clear":
             task = "/clear"
 
@@ -506,80 +504,12 @@ async def interactive_mode(message_renderer, initial_command: str = None) -> Non
                 continue
             elif isinstance(command_result, str):
                 if command_result == "__AUTOSAVE_LOAD__":
-                    # Handle async autosave loading
-                    try:
-                        # Check if we're in a real interactive terminal
-                        # (not pexpect/tests) - interactive picker requires proper TTY
-                        use_interactive_picker = (
-                            sys.stdin.isatty() and sys.stdout.isatty()
-                        )
+                    # Autosave load: fall back to text-based picker
+                    from code_puppy.session_storage import (
+                        restore_autosave_interactively,
+                    )
 
-                        # Allow environment variable override for tests
-                        if os.getenv("CODE_PUPPY_NO_TUI") == "1":
-                            use_interactive_picker = False
-
-                        if use_interactive_picker:
-                            # Use interactive picker for terminal sessions
-                            from code_puppy.agents.agent_manager import (
-                                get_current_agent,
-                            )
-                            from code_puppy.command_line.autosave_menu import (
-                                interactive_autosave_picker,
-                            )
-                            from code_puppy.config import (
-                                set_current_autosave_from_session_name,
-                            )
-                            from code_puppy.messaging import (
-                                emit_error,
-                                emit_success,
-                                emit_warning,
-                            )
-                            from code_puppy.session_storage import (
-                                load_session,
-                                restore_autosave_interactively,
-                            )
-
-                            chosen_session = await interactive_autosave_picker()
-
-                            if not chosen_session:
-                                emit_warning("Autosave load cancelled")
-                                continue
-
-                            # Load the session
-                            base_dir = Path(AUTOSAVE_DIR)
-                            history = load_session(chosen_session, base_dir)
-
-                            agent = get_current_agent()
-                            agent.set_message_history(history)
-
-                            # Set current autosave session
-                            set_current_autosave_from_session_name(chosen_session)
-
-                            total_tokens = sum(
-                                agent.estimate_tokens_for_message(msg)
-                                for msg in history
-                            )
-                            session_path = base_dir / f"{chosen_session}.pkl"
-
-                            emit_success(
-                                f"✅ Autosave loaded: {len(history)} messages ({total_tokens} tokens)\n"
-                                f"📁 From: {session_path}"
-                            )
-
-                            # Display recent message history for context
-                            from code_puppy.command_line.autosave_menu import (
-                                display_resumed_history,
-                            )
-
-                            display_resumed_history(history)
-                        else:
-                            # Fall back to old text-based picker for tests/non-TTY environments
-                            await restore_autosave_interactively(Path(AUTOSAVE_DIR))
-
-                    except Exception as e:
-                        from code_puppy.messaging import emit_error
-
-                        emit_error(f"Failed to load autosave: {e}")
+                    await restore_autosave_interactively(Path(AUTOSAVE_DIR))
                     continue
                 else:
                     # Command returned a prompt to execute

@@ -330,9 +330,4 @@ async def restore_autosave_interactively(base_dir: Path) -> None:
     )
 
     # Display recent message history for context
-    try:
-        from code_puppy.command_line.autosave_menu import display_resumed_history
-
-        display_resumed_history(history)
-    except Exception:
-        pass  # Don't fail if display doesn't work in non-TTY environment
+    pass

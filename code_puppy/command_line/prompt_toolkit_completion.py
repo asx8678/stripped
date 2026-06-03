@@ -6,7 +6,6 @@
 # CYAN = '\033[1;36m'
 # YELLOW = '\033[1;33m'
 # BOLD = '\033[1m'
-import asyncio
 import os
 import sys
 from typing import Optional
@@ -32,17 +31,8 @@ from code_puppy.command_line.clipboard import (
     has_image_in_clipboard,
 )
 from code_puppy.command_line.command_registry import get_unique_commands
-from code_puppy.command_line.file_path_completion import FilePathCompleter
-from code_puppy.command_line.load_context_completion import LoadContextCompleter
-from code_puppy.command_line.model_picker_completion import (
-    ModelNameCompleter,
-    get_active_model,
-)
-from code_puppy.command_line.pin_command_completion import PinCompleter, UnpinCompleter
-from code_puppy.command_line.skills_completion import SkillsCompleter
 from code_puppy.command_line.utils import list_directory
 from code_puppy.config import (
-    COMMAND_HISTORY_FILE,
     get_config_keys,
     get_puppy_name,
     get_value,
@@ -354,45 +344,8 @@ class AgentCompleter(Completer):
         self.trigger = trigger
 
     def get_completions(self, document, complete_event):
-        cursor_position = document.cursor_position
-        text_before_cursor = document.text_before_cursor
-        stripped_text = text_before_cursor.lstrip()
-
-        # Require a space after /agent before showing completions
-        if not stripped_text.startswith(self.trigger + " "):
-            return
-
-        # Extract the input after /agent and space (up to cursor)
-        trigger_pos = text_before_cursor.find(self.trigger)
-        trigger_end = trigger_pos + len(self.trigger) + 1  # +1 for the space
-        text_after_trigger = text_before_cursor[trigger_end:cursor_position].lstrip()
-        start_position = -(len(text_after_trigger))
-
-        # Load all available agent names
-        try:
-            from code_puppy.command_line.pin_command_completion import load_agent_names
-
-            agent_names = load_agent_names()
-        except Exception:
-            # If agent loading fails, return no completions
-            return
-
-        # Filter and yield agent completions
-        try:
-            from code_puppy.command_line.pin_command_completion import (
-                _get_agent_display_meta,
-            )
-        except ImportError:
-            _get_agent_display_meta = lambda x: "default"  # noqa: E731
-
-        for agent_name in agent_names:
-            if agent_name.lower().startswith(text_after_trigger.lower()):
-                yield Completion(
-                    agent_name,
-                    start_position=start_position,
-                    display=agent_name,
-                    display_meta=_get_agent_display_meta(agent_name),
-                )
+        # Interactive agent picker removed in Phase 9 strip
+        return
 
 
 class SlashCompleter(Completer):
@@ -547,9 +500,10 @@ def _normalize_emoji_spacing(text: str) -> str:
 
 def get_prompt_with_active_model(base: str = ">>> "):
     from code_puppy.agents.agent_manager import get_current_agent
+    from code_puppy.config import get_value
 
     puppy = get_puppy_name()
-    global_model = get_active_model() or "(default)"
+    global_model = get_value("model") or "(default)"
 
     # Get current agent information
     current_agent = get_current_agent()
@@ -637,19 +591,8 @@ async def get_input_with_combined_completion(
 
     completer = merge_completers(
         [
-            FilePathCompleter(symbol="@"),
-            ModelNameCompleter(trigger="/model"),
-            ModelNameCompleter(trigger="/m"),
             CDCompleter(trigger="/cd"),
             SetCompleter(trigger="/set"),
-            LoadContextCompleter(trigger="/load_context"),
-            PinCompleter(trigger="/pin_model"),
-            UnpinCompleter(trigger="/unpin"),
-            AgentCompleter(trigger="/agent"),
-            AgentCompleter(trigger="/a"),
-            AgentCompleter(trigger="/switch-agent"),
-            AgentCompleter(trigger="/sa"),
-            SkillsCompleter(trigger="/skills"),
             *([OllamaSetupCompleter()] if OllamaSetupCompleter is not None else []),
             SlashCompleter(),
         ]
@@ -937,22 +880,3 @@ async def get_input_with_combined_completion(
     # and emitting success messages. Now we let all /model commands fall through to
     # the command handler in main.py for consistent handling.
     return text
-
-
-if __name__ == "__main__":
-    print("Type '@' for path-completion or '/model' to pick a model. Ctrl+D to exit.")
-
-    async def main():
-        while True:
-            try:
-                inp = await get_input_with_combined_completion(
-                    get_prompt_with_active_model(), history_file=COMMAND_HISTORY_FILE
-                )
-                print(f"You entered: {inp}")
-            except KeyboardInterrupt:
-                continue
-            except EOFError:
-                break
-        print("\nGoodbye!")
-
-    asyncio.run(main())

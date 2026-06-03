@@ -1,7 +1,5 @@
 # Import to trigger command registration
-import code_puppy.command_line.config_commands  # noqa: F401
 import code_puppy.command_line.core_commands  # noqa: F401
-import code_puppy.command_line.session_commands  # noqa: F401
 
 # Global flag to track if plugins have been loaded
 _PLUGINS_LOADED = False
@@ -271,20 +269,11 @@ def handle_command(command: str):
             # Log via emit_error but do not block default handling
             emit_warning(f"Custom command hook error: {e}")
 
+        # /set and /session commands removed in Phase 9 strip
         if name:
             emit_warning(
                 Text.from_markup(
                     f"Unknown command: {command}\n[dim]Type /help for options.[/dim]"
-                )
-            )
-        else:
-            # Show current model ONLY here
-            from code_puppy.command_line.model_picker_completion import get_active_model
-
-            current_model = get_active_model()
-            emit_info(
-                Text.from_markup(
-                    f"[bold green]Current Model:[/bold green] [cyan]{current_model}[/cyan]"
                 )
             )
         return True

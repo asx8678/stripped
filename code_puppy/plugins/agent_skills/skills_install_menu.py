@@ -25,12 +25,8 @@ from prompt_toolkit.layout import Dimension, Layout, VSplit, Window
 from prompt_toolkit.layout.controls import FormattedTextControl
 from prompt_toolkit.widgets import Frame
 
-from code_puppy.command_line.pagination import (
-    ensure_visible_page,
-    get_page_bounds,
-    get_total_pages,
-)
 from code_puppy.command_line.utils import safe_input
+
 from code_puppy.messaging import emit_error, emit_info, emit_success, emit_warning
 from code_puppy.plugins.agent_skills.downloader import download_and_install_skill
 from code_puppy.plugins.agent_skills.installer import InstallResult
@@ -40,6 +36,34 @@ from code_puppy.tools.command_runner import set_awaiting_user_input
 logger = logging.getLogger(__name__)
 
 PAGE_SIZE = 12
+
+
+# Inlined pagination helpers from deleted pagination.py
+def get_total_pages(total_items: int, page_size: int) -> int:
+    if page_size <= 0:
+        raise ValueError("page_size must be greater than 0")
+    if total_items <= 0:
+        return 1
+    return (total_items + page_size - 1) // page_size
+
+
+def get_page_bounds(page: int, total_items: int, page_size: int):
+    start = max(0, page) * page_size
+    end = min(start + page_size, max(0, total_items))
+    return start, end
+
+
+def get_page_for_index(index: int, page_size: int) -> int:
+    if page_size <= 0:
+        raise ValueError("page_size must be greater than 0")
+    return max(0, index) // page_size
+
+
+def ensure_visible_page(selected_index, current_page, total_items, page_size):
+    start, end = get_page_bounds(current_page, total_items, page_size)
+    if selected_index < start or selected_index >= end:
+        return get_page_for_index(selected_index, page_size)
+    return current_page
 
 
 def is_skill_installed(skill_id: str) -> bool:
