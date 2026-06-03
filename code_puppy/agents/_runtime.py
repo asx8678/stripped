@@ -70,7 +70,6 @@ from code_puppy.agents._run_signals import (
     prepare_queued_steer_injection,
     reset_pause_state_at_run_start,
 )
-from code_puppy.agents._diagnostics import emit_exception_diagnostics
 from code_puppy.agents._non_streaming_render import (
     StreamingTextDetector,
     render_result_without_streaming,
@@ -503,7 +502,7 @@ async def run_with_mcp(
                 ),
             )
             for exc in unexpected:
-                emit_exception_diagnostics(exc, group_id=group_id)
+                emit_error(str(exc), group_id=group_id)
         finally:
             agent._message_history = _history.prune_interrupted_tool_calls(
                 agent._message_history

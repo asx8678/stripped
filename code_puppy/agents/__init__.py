@@ -16,8 +16,7 @@ from .agent_manager import (
     set_current_agent,
 )
 
-# Import for its side effect: auto-registers the TTFT/TG run-stats hooks.
-from . import run_stats  # noqa: F401
+# (run_stats side-effect import removed — Phase 12A)
 from .subagent_stream_handler import subagent_stream_handler
 
 __all__ = [
