@@ -222,8 +222,6 @@ async def main():
             emit_error(f"Error setting agent: {str(e)}")
             sys.exit(1)
 
-    current_version = __version__
-
     await callbacks.on_startup()
 
     global shutdown_flag
@@ -299,7 +297,6 @@ async def interactive_mode(message_renderer, initial_command: str = None) -> Non
     )
     # Print truecolor warning LAST so it's the most visible thing on startup
     # Big ugly red box should be impossible to miss! 🔴
-    print_truecolor_warning(display_console)
 
     # Shell pass-through for initial_command: !<cmd> bypasses the agent
     if initial_command:
@@ -395,9 +392,6 @@ async def interactive_mode(message_renderer, initial_command: str = None) -> Non
 
     # Autosave loading is now manual - use /autosave_load command
 
-    # Track this terminal's active session for /switch-agent auto-resume
-    record_terminal_session(get_current_autosave_session_name(), overwrite=False)
-
     # Auto-run tutorial on first startup
     try:
         from code_puppy.command_line.onboarding_wizard import should_show_onboarding
@@ -407,7 +401,7 @@ async def interactive_mode(message_renderer, initial_command: str = None) -> Non
 
             from code_puppy.command_line.onboarding_wizard import run_onboarding_wizard
             from code_puppy.config import set_model_name
-            
+
             with concurrent.futures.ThreadPoolExecutor() as executor:
                 future = executor.submit(lambda: asyncio.run(run_onboarding_wizard()))
                 result = future.result(timeout=300)
@@ -440,7 +434,7 @@ async def interactive_mode(message_renderer, initial_command: str = None) -> Non
 
     while True:
         from code_puppy.agents.agent_manager import get_current_agent
-        
+
         # Get the custom prompt from the current agent, or use default
         current_agent = get_current_agent()
         user_prompt = current_agent.get_user_prompt() or "Enter your coding task:"
@@ -648,7 +642,7 @@ async def interactive_mode(message_renderer, initial_command: str = None) -> Non
                 )
                 # Check if the task was cancelled (but don't show message if we just killed processes)
                 if result is None:
-                        # Re-disable Ctrl+C if needed (uvx mode)
+                    # Re-disable Ctrl+C if needed (uvx mode)
                     try:
                         from code_puppy.terminal_utils import ensure_ctrl_c_disabled
 
@@ -732,9 +726,7 @@ async def interactive_mode(message_renderer, initial_command: str = None) -> Non
 
                 if continuation.get("clear_context", False):
                     current_agent.clear_message_history()
-                    emit_system_message(
-                        "Context cleared."
-                    )
+                    emit_system_message("Context cleared.")
 
                 delay = float(continuation.get("delay") or 0)
                 if delay > 0:
@@ -783,8 +775,6 @@ async def interactive_mode(message_renderer, initial_command: str = None) -> Non
                     from code_puppy.messaging.queue_console import get_queue_console
 
                     get_queue_console().print_exception()
-                    auto_save_session_if_enabled()
-
 
 
 async def run_prompt_with_attachments(
@@ -870,14 +860,12 @@ async def run_prompt_with_attachments(
                 result = await agent_task
                 return result, agent_task
             except asyncio.CancelledError:
-                emit_info("Agent task cancelled")
                 return None, agent_task
     else:
         try:
             result = await agent_task
             return result, agent_task
         except asyncio.CancelledError:
-            emit_info("Agent task cancelled")
             return None, agent_task
 
 
@@ -892,9 +880,6 @@ async def execute_single_prompt(prompt: str, message_renderer) -> None:
     if is_shell_passthrough(prompt):
         execute_shell_passthrough(prompt)
         return
-
-    
-    emit_info(f"Executing prompt: {prompt}")
 
     try:
         # Get agent through runtime manager and use helper for attachments
@@ -938,5 +923,4 @@ def main_entry():
         sys.stderr.write(traceback.format_exc())
         return 0
     finally:
-        # Reset terminal on Unix-like systems (not Windows)
-        reset_unix_terminal()
+        pass

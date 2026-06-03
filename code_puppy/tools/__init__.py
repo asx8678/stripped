@@ -204,7 +204,6 @@ def register_tools_for_agent(
         register_func(agent)
 
 
-
 def register_all_tools(agent, model_name: str | None = None):
     """Register all available tools to the provided agent.
 

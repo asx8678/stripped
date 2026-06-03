@@ -146,3 +146,5 @@ Changes not staged for commit:
 	deleted:    tests/test_mcp_init.py
 
 no changes added to commit (use "git add" and/or "git commit -a")
+
+- Phase 7: ruff F-sweep + prune pyproject deps — b567ce301518d9367413691ca503008c34493648
