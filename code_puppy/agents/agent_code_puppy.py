@@ -34,10 +34,8 @@ class CodePuppyAgent(BaseAgent):
             "delete_snippet",
             "delete_file",
             "agent_run_shell_command",
-            "ask_user_question",
             "activate_skill",
             "list_or_search_skills",
-            "load_image_for_analysis",
         ]
 
     def _get_reasoning_prompt_sections(self) -> dict[str, str]:

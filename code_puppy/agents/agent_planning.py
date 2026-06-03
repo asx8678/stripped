@@ -30,7 +30,6 @@ class PlanningAgent(BaseAgent):
             "list_files",
             "read_file",
             "grep",
-            "ask_user_question",
             "list_agents",
             "invoke_agent",
             "list_or_search_skills",
