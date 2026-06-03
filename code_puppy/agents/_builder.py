@@ -83,12 +83,12 @@ def reload_mcp_servers(agent_name: Optional[str] = None) -> List[Any]:
 
 
 async def autostart_bound_servers_async(manager: Any, agent_name: str) -> None:
-    """Async autostart stub retained for subagent tool compatibility."""
+    """Async autostart stub (MCP servers are auto-started elsewhere)."""
     return None
 
 
 def _autostart_bound_servers(manager: Any, agent_name: str) -> None:
-    """Sync autostart stub retained for subagent tool compatibility."""
+    """Sync autostart stub (MCP servers are auto-started elsewhere)."""
     return None
 
 

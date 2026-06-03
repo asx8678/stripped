@@ -85,15 +85,6 @@ def get_streaming_console() -> Console:
     return Console()
 
 
-def _should_suppress_output() -> bool:
-    """Check if sub-agent output should be suppressed.
-
-    Returns:
-        Always False — sub-agent delegation removed (Phase 12B)
-    """
-    return False
-
-
 async def event_stream_handler(
     ctx: RunContext,
     events: AsyncIterable[Any],
@@ -107,11 +98,6 @@ async def event_stream_handler(
         ctx: The run context.
         events: Async iterable of streaming events (PartStartEvent, PartDeltaEvent, etc.).
     """
-    # If we're in a sub-agent and verbose mode is disabled, silently consume events
-    if _should_suppress_output():
-        async for _ in events:
-            pass  # Just consume events without rendering
-        return
 
     # NOTE: TTFT / gen-speed timing is now handled by callback hooks
     # registered in ``messaging.spinner._stream_stats_hooks`` (agent_run_start +

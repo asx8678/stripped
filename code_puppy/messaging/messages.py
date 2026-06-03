@@ -265,58 +265,6 @@ class AgentResponseMessage(BaseMessage):
     )
 
 
-class SubAgentInvocationMessage(BaseMessage):
-    """Message for sub-agent invocation header/status. Used by invoke_agent tool."""
-
-    category: MessageCategory = MessageCategory.AGENT
-    agent_name: str = Field(description="Name of the agent being invoked")
-    session_id: str = Field(description="Session ID for the invocation")
-    prompt: str = Field(description="The prompt being sent to the agent")
-    is_new_session: bool = Field(
-        description="Whether this is a new session or continuation"
-    )
-    message_count: int = Field(
-        default=0, description="Number of messages in history (for continuation)"
-    )
-
-
-class SubAgentResponseMessage(BaseMessage):
-    """Response from a sub-agent invocation. Rendered as markdown."""
-
-    category: MessageCategory = MessageCategory.AGENT
-    agent_name: str = Field(description="Name of the agent that responded")
-    session_id: str = Field(description="Session ID for the invocation")
-    response: str = Field(description="The agent's response content")
-    message_count: int = Field(
-        default=0, description="Number of messages now in session history"
-    )
-
-
-class SubAgentStatusMessage(BaseMessage):
-    """Real-time status update for a running sub-agent."""
-
-    category: MessageCategory = MessageCategory.AGENT
-    session_id: str = Field(description="Unique session ID of the sub-agent")
-    agent_name: str = Field(description="Name of the agent (e.g., 'code-puppy')")
-    model_name: str = Field(description="Model being used by this agent")
-    status: Literal[
-        "starting", "running", "thinking", "tool_calling", "completed", "error"
-    ] = Field(description="Current status of the agent")
-    tool_call_count: int = Field(
-        default=0, ge=0, description="Number of tools called so far"
-    )
-    token_count: int = Field(default=0, ge=0, description="Estimated tokens in context")
-    current_tool: Optional[str] = Field(
-        default=None, description="Name of tool currently being called"
-    )
-    elapsed_seconds: float = Field(
-        default=0.0, ge=0, description="Time since agent started"
-    )
-    error_message: Optional[str] = Field(
-        default=None, description="Error message if status is 'error'"
-    )
-
-
 class UniversalConstructorMessage(BaseMessage):
     """Result of a universal_constructor operation."""
 
@@ -500,9 +448,6 @@ AnyMessage = Union[
     ShellOutputMessage,
     AgentReasoningMessage,
     AgentResponseMessage,
-    SubAgentInvocationMessage,
-    SubAgentResponseMessage,
-    SubAgentStatusMessage,
     UniversalConstructorMessage,
     UserInputRequest,
     ConfirmationRequest,
@@ -545,9 +490,6 @@ __all__ = [
     # Agent
     "AgentReasoningMessage",
     "AgentResponseMessage",
-    "SubAgentInvocationMessage",
-    "SubAgentResponseMessage",
-    "SubAgentStatusMessage",
     # Universal Constructor
     "UniversalConstructorMessage",
     # User interaction

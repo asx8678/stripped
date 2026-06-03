@@ -173,6 +173,7 @@ no changes added to commit (use "git add" and/or "git commit -a")
 - Phase 12A: removed agent-creator + diagnostics/error-logging/run-stats (4 files) — 80dba7a. KEPT: sub-agents, json_agent, agent_planning, _non_streaming_render.
 - Phase 13: cleanup & hygiene (ruff F-sweep, repo hygiene, dep prune) — <this commit>
 - Phase 12B: removed sub-agent delegation (deleted subagent_stream_handler, tools/subagent_context, messaging/subagent_console; severed invoke_agent + is_subagent) — 1e4eff9. Single-agent only now.
+- Phase 12C: removed harmless dead sub-agent code (3 dead message types, get_subagent_verbose + 2 banner colors, dead session helpers, dead renderer suppression guards) — 1847145. callbacks.py invoke_agent hook intentionally retained.
 
 ### Final `.py` count: 76
 - `agents/_runtime.py`: removed `_diagnostics` import; exception path replaced with `emit_error(str(exc), group_id=group_id)`

@@ -60,19 +60,6 @@ AUTOSAVE_DIR = os.path.join(CACHE_DIR, "autosaves")
 COMMAND_HISTORY_FILE = os.path.join(STATE_DIR, "command_history.txt")
 
 
-def get_subagent_verbose() -> bool:
-    """Return True if sub-agent verbose output is enabled (default False).
-
-    When False (default), sub-agents produce quiet, sparse output suitable
-    for parallel execution. When True, sub-agents produce full verbose output
-    like the main agent (useful for debugging).
-    """
-    cfg_val = get_value("subagent_verbose")
-    if cfg_val is None:
-        return False
-    return str(cfg_val).strip().lower() in {"1", "true", "yes", "on"}
-
-
 # Pack agents - the specialized sub-agents coordinated by Pack Leader
 PACK_AGENT_NAMES = frozenset(
     [
@@ -1563,8 +1550,6 @@ DEFAULT_BANNER_COLORS = {
     "grep": "grey37",  # Silver - search results
     "directory_listing": "dodger_blue2",  # Sky - navigation
     "agent_reasoning": "dark_violet",  # Violet - deep thought
-    "invoke_agent": "deep_pink4",  # Ruby - agent invocation
-    "subagent_response": "sea_green3",  # Emerald - sub-agent success
     "list_agents": "dark_slate_gray3",  # Slate - neutral listing
     "universal_constructor": "dark_cyan",  # Teal - constructing tools
     # Browser/Terminal tools - same color as edit_file (gold)
