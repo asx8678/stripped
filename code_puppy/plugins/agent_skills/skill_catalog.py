@@ -1,8 +1,8 @@
-"""Remote-backed skill catalog adapter.
+"""Local-only skill catalog.
 
 This module provides a stable public interface for the rest of the codebase.
-Historically, code_puppy used a local static catalog. We now source skills from
-`remote_catalog.fetch_remote_catalog()` while keeping the same access patterns.
+The catalog is now local-only: it starts empty and is populated by
+caller code if needed. No network access, no remote fetching.
 
 Public API:
     from code_puppy.plugins.agent_skills.skill_catalog import (
@@ -11,9 +11,6 @@ Public API:
         _format_display_name,
         catalog,
     )
-
-If the remote catalog can't be fetched (and there's no cache), the catalog is
-empty by default (and we log a warning).
 """
 
 from __future__ import annotations
@@ -22,8 +19,6 @@ import logging
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import List, Optional
-
-from code_puppy.plugins.agent_skills.remote_catalog import fetch_remote_catalog
 
 logger = logging.getLogger(__name__)
 
@@ -103,8 +98,8 @@ def _format_display_name(skill_id: str) -> str:
 class SkillCatalogEntry:
     """Catalog entry for a skill.
 
-    Fields are designed to match the historical local catalog interface while
-    including remote-only fields (download_url, zip_size_bytes).
+    Fields match the historical interface; remote-only fields are kept
+    for backward compatibility but are empty in local-only mode.
     """
 
     id: str
@@ -122,9 +117,10 @@ class SkillCatalogEntry:
 
 
 class SkillCatalog:
-    """Remote skill catalog.
+    """Local skill catalog.
 
-    This class is a simple in-memory index over remote catalog entries.
+    This class is a simple in-memory index over local skill entries.
+    Starts empty; callers can add entries via :meth:`add_entry`.
     """
 
     def __init__(self) -> None:
@@ -134,46 +130,21 @@ class SkillCatalog:
         self._by_id: dict[str, SkillCatalogEntry] = {}
         self._by_category: dict[str, list[SkillCatalogEntry]] = {}
 
-        try:
-            remote = fetch_remote_catalog()
-        except Exception as e:
-            # fetch_remote_catalog should already be defensive, but let's be extra safe.
-            logger.warning(f"Failed to fetch remote catalog: {e}")
-            remote = None
+        logger.info("Initialized local skill catalog (empty)")
 
-        if remote is None:
-            logger.warning(
-                "Remote skill catalog unavailable (no network and no cache). "
-                "Catalog will be empty."
-            )
-            return
+    def add_entry(self, entry: SkillCatalogEntry) -> None:
+        """Add a skill entry to the catalog."""
+        self._entries.append(entry)
+        self._by_id[entry.id] = entry
 
-        entries: list[SkillCatalogEntry] = []
+        cat_key = (entry.category or "").casefold()
+        self._by_category.setdefault(cat_key, []).append(entry)
 
-        for remote_entry in remote.entries:
-            skill_id = remote_entry.name
-            entry = SkillCatalogEntry(
-                id=skill_id,
-                name=remote_entry.name,
-                display_name=_format_display_name(remote_entry.name),
-                description=remote_entry.description,
-                category=remote_entry.group,
-                tags=[],
-                source_path=None,
-                has_scripts=remote_entry.has_scripts,
-                has_references=remote_entry.has_references,
-                file_count=remote_entry.file_count,
-                download_url=remote_entry.download_url,
-                zip_size_bytes=remote_entry.zip_size_bytes,
-            )
-            entries.append(entry)
+        # Keep category lists stable and predictable.
+        for cat_entries in self._by_category.values():
+            cat_entries.sort(key=lambda e: e.display_name.casefold())
 
-        self._rebuild_indices(entries)
-
-        logger.info(
-            f"Loaded remote skill catalog: {len(self._entries)} skills in "
-            f"{len(self._by_category)} categories"
-        )
+        self._entries.sort(key=lambda e: e.display_name.casefold())
 
     def _rebuild_indices(self, entries: list[SkillCatalogEntry]) -> None:
         """Rebuild internal lookup indices from the loaded entries."""

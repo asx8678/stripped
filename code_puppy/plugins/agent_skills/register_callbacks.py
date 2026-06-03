@@ -3,7 +3,7 @@
 This plugin:
 1. Injects available skills into system prompts
 2. Registers skill-related tools
-3. Provides /skills slash command (and alias /skill)
+3. Provides /skills slash command (and alias /skill) - local-only listing
 """
 
 import logging
@@ -91,7 +91,67 @@ def _register_skills_tools() -> List[Dict[str, Any]]:
 
 
 # ---------------------------------------------------------------------------
-# Slash command: /skills (and alias /skill)
+# Per-skill slash commands (kept inline so skill_commands.py can be deleted)
+# ---------------------------------------------------------------------------
+
+_RESERVED_NAMES = {"skills", "skill"}
+
+
+def _iter_enabled_skills():
+    from .enabled_skills import iter_enabled_skill_metadata
+
+    for meta in iter_enabled_skill_metadata():
+        if meta.name in _RESERVED_NAMES:
+            continue
+        yield meta
+
+
+def handle_skill_command(command: str, name: str) -> Optional[Any]:
+    """Return the SKILL.md content as a prompt injection if ``name``
+    matches an enabled skill, otherwise ``None``."""
+    if not name or name in _RESERVED_NAMES:
+        return None
+
+    match = next((m for m in _iter_enabled_skills() if m.name == name), None)
+    if match is None:
+        return None
+
+    from code_puppy.messaging import emit_info
+    from .metadata import load_full_skill_content
+
+    content = load_full_skill_content(match.path)
+    if not content:
+        logger.warning("Failed to load SKILL.md for %s", match.name)
+        return None
+
+    parts = command.split(maxsplit=1)
+    args = parts[1].strip() if len(parts) > 1 else ""
+
+    header = (
+        f"You are activating the '{match.name}' skill. Follow its "
+        f"SKILL.md instructions below verbatim.\n\n"
+    )
+    prompt = header + content
+    if args:
+        prompt = f"{prompt}\n\nAdditional context: {args}"
+
+    emit_info(f"Activating skill via slash command: {match.name}")
+
+    try:
+        from code_puppy.plugins.customizable_commands.register_callbacks import (
+            MarkdownCommandResult,
+        )
+    except ImportError:
+
+        class MarkdownCommandResult:  # type: ignore[no-redef]
+            def __init__(self, prompt: str) -> None:
+                self.prompt = prompt
+
+    return MarkdownCommandResult(prompt)
+
+
+# ---------------------------------------------------------------------------
+# Slash command: /skills (and alias /skill) — local-only listing
 # ---------------------------------------------------------------------------
 
 _COMMAND_NAME = "skills"
@@ -99,35 +159,28 @@ _ALIASES = ("skill",)
 
 
 def _skills_command_help() -> List[Tuple[str, str]]:
-    """Advertise /skills (+ every individual skill) in the /help menu."""
-    from .skill_commands import skill_command_help
-
-    entries: List[Tuple[str, str]] = [
-        ("skills", "Manage agent skills – browse, enable, disable, install"),
+    """Advertise /skills in the /help menu."""
+    return [
+        ("skills", "List locally installed agent skills"),
         ("skill", "Alias for /skills"),
     ]
-    # Append per-skill commands so they show up in /help & tab-completion.
-    entries.extend(skill_command_help())
-    return entries
 
 
 def _handle_skills_command(command: str, name: str) -> Optional[Any]:
     """Handle /skills and /skill slash commands.
 
-    Sub-commands:
-        /skills          – Launch interactive TUI menu
-        /skills list     – Quick text list of all skills
-        /skills install  – Browse & install from remote catalog
+    Sub-commands (local-only):
+        /skills list     – List all locally discovered skills with enable/disable status
         /skills enable   – Enable skills integration globally
         /skills disable  – Disable skills integration globally
         /skills toggle   – Toggle skills integration globally
+        /skills frontmatter [on|off|toggle] - Toggle skill list injection into system prompt
         /skills refresh  – Force skill re-discovery and refresh local cache
         /skills help     – Show skills command help
+        /skills          – List all locally discovered skills
     """
     if name not in (_COMMAND_NAME, *_ALIASES):
-        # Not the /skills meta-command — maybe it's an individual skill?
-        from .skill_commands import handle_skill_command
-
+        # Not the /skills meta-command — check if it's an individual skill.
         return handle_skill_command(command, name)
 
     from code_puppy.messaging import emit_error, emit_info, emit_success, emit_warning
@@ -143,7 +196,6 @@ def _handle_skills_command(command: str, name: str) -> Optional[Any]:
         refresh_skill_cache,
     )
     from code_puppy.plugins.agent_skills.metadata import parse_skill_metadata
-    from code_puppy.plugins.agent_skills.skills_menu import show_skills_menu
 
     tokens = command.split()
 
@@ -192,31 +244,23 @@ def _handle_skills_command(command: str, name: str) -> Optional[Any]:
                 emit_info("")
             return True
 
-        elif subcommand == "install":
-            from code_puppy.plugins.agent_skills.skills_install_menu import (
-                run_skills_install_menu,
-            )
-
-            run_skills_install_menu()
-            return True
-
         elif subcommand == "enable":
             set_skills_enabled(True)
-            emit_success("\u2705 Skills integration enabled globally")
+            emit_success(" Skills integration enabled globally")
             return True
 
         elif subcommand == "disable":
             set_skills_enabled(False)
-            emit_warning("\U0001f534 Skills integration disabled globally")
+            emit_warning(" Skills integration disabled globally")
             return True
 
         elif subcommand == "toggle":
             new_state = not get_skills_enabled()
             set_skills_enabled(new_state)
             if new_state:
-                emit_success("✅ Skills integration enabled globally")
+                emit_success(" Skills integration enabled globally")
             else:
-                emit_warning("🔴 Skills integration disabled globally")
+                emit_warning(" Skills integration disabled globally")
             return True
 
         elif subcommand == "frontmatter":
@@ -233,7 +277,7 @@ def _handle_skills_command(command: str, name: str) -> Optional[Any]:
             elif arg is None:
                 emit_info(
                     f"Skill frontmatter in system prompt: "
-                    f"{'🟢 on' if current else '🔴 off'}"
+                    f"{' on' if current else ' off'}"
                 )
                 emit_info("Usage: /skills frontmatter [on|off|toggle]")
                 return True
@@ -244,12 +288,10 @@ def _handle_skills_command(command: str, name: str) -> Optional[Any]:
 
             set_frontmatter_in_system_prompt(new_state)
             if new_state:
-                emit_success(
-                    "✅ Skill frontmatter will be injected into system prompts"
-                )
+                emit_success(" Skill frontmatter will be injected into system prompts")
             else:
                 emit_warning(
-                    "🔴 Skill frontmatter hidden from system prompts "
+                    " Skill frontmatter hidden from system prompts "
                     "(model can still call activate_skill / list_or_search_skills)"
                 )
             return True
@@ -258,7 +300,7 @@ def _handle_skills_command(command: str, name: str) -> Optional[Any]:
             refreshed = refresh_skill_cache()
             valid_skills = [skill for skill in refreshed if skill.has_skill_md]
             emit_success(
-                f"🔄 Refreshed skills cache: {len(refreshed)} discovered "
+                f" Refreshed skills cache: {len(refreshed)} discovered "
                 f"({len(valid_skills)} with SKILL.md)"
             )
             return True
@@ -266,7 +308,6 @@ def _handle_skills_command(command: str, name: str) -> Optional[Any]:
         elif subcommand == "help":
             emit_info("Available /skills subcommands:")
             emit_info("  /skills list     - List all installed skills")
-            emit_info("  /skills install  - Browse & install from catalog")
             emit_info("  /skills enable   - Enable skills integration globally")
             emit_info("  /skills disable  - Disable skills integration globally")
             emit_info("  /skills toggle   - Toggle skills integration globally")
@@ -274,18 +315,56 @@ def _handle_skills_command(command: str, name: str) -> Optional[Any]:
                 "  /skills frontmatter [on|off|toggle] - Toggle skill list injection into system prompt"
             )
             emit_info("  /skills refresh  - Refresh skill cache")
-            emit_info("  /skills          - Open interactive skills menu")
+            emit_info("  /skills          - List all installed skills")
             return True
 
         else:
             emit_error(f"Unknown subcommand: {subcommand}")
             emit_info(
-                "Usage: /skills [list|install|enable|disable|toggle|frontmatter|refresh|help]"
+                "Usage: /skills [list|enable|disable|toggle|frontmatter|refresh|help]"
             )
             return True
 
-    # No subcommand – launch TUI menu
-    show_skills_menu()
+    # No subcommand – list all locally discovered skills
+    disabled_skills = get_disabled_skills()
+    skills = discover_skills()
+    enabled = get_skills_enabled()
+
+    if not skills:
+        emit_info("No skills found.")
+        emit_info("Create skills in:")
+        emit_info("  - ~/.code_puppy/skills/")
+        emit_info("  - ./skills/")
+        return True
+
+    emit_info(
+        f"\U0001f6e0\ufe0f Skills (integration: {'enabled' if enabled else 'disabled'})"
+    )
+    emit_info(f"Found {len(skills)} skill(s):\n")
+
+    for skill in skills:
+        metadata = parse_skill_metadata(skill.path)
+        if metadata:
+            status = (
+                "\U0001f534 disabled"
+                if metadata.name in disabled_skills
+                else "\U0001f7e2 enabled"
+            )
+            version_str = f" v{metadata.version}" if metadata.version else ""
+            author_str = f" by {metadata.author}" if metadata.author else ""
+            emit_info(f"  {status} {metadata.name}{version_str}{author_str}")
+            emit_info(f"      {metadata.description}")
+            if metadata.tags:
+                emit_info(f"      tags: {', '.join(metadata.tags)}")
+        else:
+            status = (
+                "\U0001f534 disabled"
+                if skill.name in disabled_skills
+                else "\U0001f7e2 enabled"
+            )
+            emit_info(f"  {status} {skill.name}")
+            emit_info("      (no SKILL.md metadata found)")
+        emit_info("")
     return True
 
 
