@@ -15,13 +15,20 @@ from pydantic_ai import RunContext
 
 from code_puppy.messaging import get_message_bus
 from code_puppy.messaging.messages import UniversalConstructorMessage
-from code_puppy.plugins.universal_constructor.models import (
-    UCCallOutput,
-    UCCreateOutput,
-    UCInfoOutput,
-    UCListOutput,
-    UCUpdateOutput,
-)
+
+try:
+    from code_puppy.plugins.universal_constructor.models import (
+        UCCallOutput,
+        UCCreateOutput,
+        UCInfoOutput,
+        UCListOutput,
+        UCUpdateOutput,
+    )
+
+    _UC_MODELS_AVAILABLE = True
+except Exception:  # pragma: no cover - optional subsystem removed
+    _UC_MODELS_AVAILABLE = False
+    UCCallOutput = UCCreateOutput = UCInfoOutput = UCListOutput = UCUpdateOutput = None  # type: ignore[assignment,misc]
 
 
 class UniversalConstructorOutput(BaseModel):

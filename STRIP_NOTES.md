@@ -32,3 +32,4 @@ Narrow `pydantic-ai-slim[openai,anthropic,mcp]` -> `[openai,anthropic]`; drop `p
 
 ## Phase log (append a line per phase with the commit SHA)
 - Phase 0: baseline + coupling map — b85da4388cf6954573cd1ccbfca223cd76279b64
+- Phase 2: remove unused plugins — 

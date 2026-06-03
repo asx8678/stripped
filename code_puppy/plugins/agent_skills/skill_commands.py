@@ -64,15 +64,20 @@ def handle_skill_command(command: str, name: str) -> Optional[Any]:
     if not name or name in _RESERVED_NAMES:
         return None
 
-    # Lazy import to avoid a hard dependency on customizable_commands at
-    # plugin load time (and to keep things tidy if it ever moves).
+    # ``customizable_commands`` was removed in the spine strip; fall back to
+    # a minimal stand-in so skill slash commands still return a usable object.
     try:
         from code_puppy.plugins.customizable_commands.register_callbacks import (
             MarkdownCommandResult,
         )
     except ImportError:
-        logger.debug("MarkdownCommandResult unavailable; cannot run skill via slash")
-        return None
+        logger.debug("MarkdownCommandResult unavailable; using local stand-in")
+
+        class MarkdownCommandResult:  # type: ignore[no-redef]
+            """Minimal stand-in for the removed ``customizable_commands`` type."""
+
+            def __init__(self, prompt: str) -> None:
+                self.prompt = prompt
 
     # Find a matching enabled skill.
     match = next((m for m in _iter_enabled_skills() if m.name == name), None)

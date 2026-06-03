@@ -9,7 +9,14 @@ from typing import Any
 
 from pydantic import ValidationError
 
-from code_puppy.plugins.wiggum.state import is_active as is_wiggum_active
+try:
+    from code_puppy.plugins.wiggum.state import is_active as is_wiggum_active  # type: ignore[import]
+except Exception:  # pragma: no cover - optional plugin removed
+
+    def is_wiggum_active(*a, **k):  # type: ignore[misc]
+        return False
+
+
 from code_puppy.tools.subagent_context import is_subagent
 
 from .constants import CI_ENV_VARS, DEFAULT_TIMEOUT_SECONDS, MAX_VALIDATION_ERRORS_SHOWN
